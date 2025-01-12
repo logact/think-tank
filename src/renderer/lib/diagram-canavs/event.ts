@@ -28,11 +28,39 @@ export class EventManager {
 export enum EventName {
     containerResize,
     createNextNode,
+    // TODO
     createLastNode,
-    backToList,
+    // TODO
     back,
+    // TODO
     forward,
+    // TODO
     undo,
-    redo
+    // TODO
+    redo,
+    // TODO
+    click,
+    // TODO
+    doubleClick,
+    // TODO
+    tab,
+    // TODO
+    up,
+    // TODO
+    down,
+    // TODO
+    left,
+    // TODO
+    right,
+    // TODO
+    copy,
+    // TODO
+    paste,
+    // TODO
+    cut,
+    // TODO
+    find,
+    shift,
+    keyup,
 
 }

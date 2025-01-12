@@ -37,22 +37,152 @@ export const DiagramDetail: FC<{ diagram: DiagramVO }> = (props) => {
         let cnv = initCnv();
 
         let cnvElem = canvasRef.current as HTMLCanvasElement
+
         cnvElem.focus()
+        cnvElem.addEventListener('keypress', (e) => {
+            if (e.shiftKey) {
+                cnv.eventManager.sendEvent({
+                    name: EventName.shift,
+                    data: { htmlEvent: e },
+                    sender: 'canvas'
+                })
+            }
+        })
+        cnvElem.addEventListener('keyup', (e) => {
+            cnv.eventManager.sendEvent({
+                name: EventName.keyup,
+                data: { htmlEvent: e },
+                sender: 'canvas'
+            })
+        })
         cnvElem.addEventListener("keydown", (e) => {
 
             if (e.metaKey || e.ctrlKey) {
                 if (e.key.toLocaleLowerCase() == 'n') {
-                    console.log("lisen the key down create");
                     cnv.eventManager.sendEvent({
                         name: EventName.createNextNode,
                         data: { htmlEvent: e },
                         sender: 'canvas'
                     })
+                } else if (e.key.toLocaleLowerCase() == 'b') {
+                    cnv.eventManager.sendEvent({
+                        name: EventName.back,
+                        data: { htmlEvent: e },
+                        sender: 'canvas'
+                    })
+                } else if (e.key.toLocaleLowerCase() === 'j') {
+                    cnv.eventManager.sendEvent({
+                        name: EventName.forward,
+                        data: { htmlEvent: e },
+                        sender: 'canvas'
+                    })
+                } else if (e.key.toLocaleLowerCase() === 'l') {
+                    cnv.eventManager.sendEvent({
+                        name: EventName.createLastNode,
+                        data: { htmlEvent: e },
+                        sender: 'canvas'
+                    })
+                } else if (e.key.toLocaleLowerCase() === 'z') {
+                    cnv.eventManager.sendEvent({
+                        name: EventName.undo,
+                        data: { htmlEvent: e },
+                        sender: 'canvas'
+                    })
+                } else if (e.key.toLocaleLowerCase() === 'y') {
+                    cnv.eventManager.sendEvent({
+                        name: EventName.redo,
+                        data: { htmlEvent: e },
+                        sender: 'canvas'
+                    })
+                } else if (e.key.toLocaleLowerCase() === 'c') {
+                    cnv.eventManager.sendEvent({
+                        name: EventName.copy,
+                        data: { htmlEvent: e },
+                        sender: 'canvas'
+                    })
+                } else if (e.key.toLocaleLowerCase() === 'v') {
+                    cnv.eventManager.sendEvent({
+                        name: EventName.paste,
+                        data: { htmlEvent: e },
+                        sender: 'canvas'
+                    })
+                } else if (e.key.toLocaleLowerCase() == 'x') {
+                    cnv.eventManager.sendEvent({
+                        name: EventName.cut,
+                        data: { htmlEvent: e },
+                        sender: 'canvas'
+                    })
+                } else if (e.key.toLocaleLowerCase() == 'f') {
+                    cnv.eventManager.sendEvent({
+                        name: EventName.find,
+                        data: { htmlEvent: e },
+                        sender: 'canvas'
+                    })
+                }
+            } else if (e.shiftKey) {
+                cnv.eventManager.sendEvent({
+                    name: EventName.shift,
+                    data: { htmlEvent: e },
+                    sender: 'canvas'
+                })
+            } else {
+                if (e.key.toLocaleLowerCase() == 'tab') {
+                    cnv.eventManager.sendEvent({
+                        name: EventName.tab,
+                        data: { htmlEvent: e },
+                        sender: 'canvas'
+                    })
+                } else if (e.key.toLocaleLowerCase() == 'w') {
+                    cnv.eventManager.sendEvent({
+                        name: EventName.up,
+                        data: { htmlEvent: e },
+                        sender: 'canvas'
+                    })
+                } else if (e.key.toLocaleLowerCase() == 'a') {
+                    cnv.eventManager.sendEvent({
+                        name: EventName.left,
+                        data: { htmlEvent: e },
+                        sender: 'canvas'
+                    })
+                } else if (e.key.toLocaleLowerCase() == 's') {
+                    cnv.eventManager.sendEvent({
+                        name: EventName.down,
+                        data: { htmlEvent: e },
+                        sender: 'canvas'
+                    })
+                } else if (e.key.toLocaleLowerCase() == 'd') {
+                    cnv.eventManager.sendEvent({
+                        name: EventName.right,
+                        data: { htmlEvent: e },
+                        sender: 'canvas'
+                    })
                 }
             }
-
-
         })
+        function getPosition(e: MouseEvent) {
+            return {
+                x: e.offsetX,
+                y: e.offsetY,
+            }
+        }
+        cnvElem.addEventListener("click", (e) => {
+            if (e.detail == 2) {
+                return
+            }
+            cnv.eventManager.sendEvent({
+                name: EventName.click,
+                data: { htmlEvent: e, position: getPosition(e) },
+                sender: 'canvas'
+            })
+        })
+        cnvElem.addEventListener("dblclick", (e) => {
+            cnv.eventManager.sendEvent({
+                name: EventName.doubleClick,
+                data: { htmlEvent: e, position: getPosition(e) },
+                sender: "canavs"
+            })
+        })
+
         let containerElem = containerRef.current as HTMLDivElement
         const resizeObserver = new ResizeObserver((entries) => {
             //TODO handle the error  https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver#observation_errors

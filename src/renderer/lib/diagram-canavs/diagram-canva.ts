@@ -10,7 +10,7 @@ import { Status } from "@common/vo/res";
 const DEFAULT_NODE_WIDTH = 50
 const DEFAULT_NODE_HEIGT = 50
 const DEFAULT_EDGE_WIDTH = 5
-class DiagramLayer implements Listenable,Drawable {
+class DiagramLayer implements Listenable, Drawable {
   name: string
   width: number
   height: number
@@ -23,6 +23,7 @@ class DiagramLayer implements Listenable,Drawable {
   selectedNodeIds: number[]
   starNodeElement: (INode & Drawable)
   endNodeElement: (INode & Drawable)
+  shfitKeyPressed: boolean
 
 
   constructor(props: { diagramVO: DiagramVO, canvas: DiagramCanavas, id: number }) {
@@ -49,6 +50,29 @@ class DiagramLayer implements Listenable,Drawable {
     this.canvas.eventManager.addObserver(this)
 
   }
+  selectNodes(event: Event) {
+
+    this.nodeElements.forEach(node => {
+      if (node.conflict(event.data.position)) {
+        if (!this.shfitKeyPressed) {
+          this.nodeElements.filter(e => this.selectedNodeIds.indexOf(e.data.id) >= 0).forEach(e => {
+            e.selectNode()
+          })
+
+          this.selectedNodeIds = []
+        }
+        node.selectNode()
+        if (node.selected) {
+          this.selectedNodeIds.push(node.data.id)
+        } else {
+          this.selectedNodeIds = this.selectedNodeIds.filter(id => id !== node.data.id)
+        }
+      }
+    })
+
+  }
+
+
   handle(event: Event) {
     switch (event.name) {
       case EventName.containerResize:
@@ -62,8 +86,18 @@ class DiagramLayer implements Listenable,Drawable {
         this.createLastNode()
         break;
       case EventName.createNextNode:
-        this.createNextNode();
+        if (this.canvas.currentLayerId == this.id) {
+          this.createNextNode();
 
+        }
+        break;
+      case EventName.click:
+        if (this.canvas.currentLayerId == this.id) {
+          this.selectNodes(event);
+        }
+        break;
+      case EventName.shift:
+        this.shfitKeyPressed = true;
     }
   }
   addNode(node: NodeVO): (INode & Drawable) {
@@ -172,7 +206,13 @@ class DiagramLayer implements Listenable,Drawable {
       this.nodeElements.push(this.addNode(newNodeVO))
       this.edgeElements.push(this.addEdge(newEdgeVO))
     })
+    this.nodeElements.filter(e => this.selectedNodeIds.indexOf(e.data.id) >= 0).forEach(e => {
+      e.selectNode()
+    })
     this.selectedNodeIds = newSelectedNodeIds
+    this.nodeElements.filter(e => this.selectedNodeIds.indexOf(e.data.id) >= 0).forEach(e => {
+      e.selectNode()
+    })
     this.draw()
   }
   createLastNode() { }
