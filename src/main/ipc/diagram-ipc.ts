@@ -6,6 +6,8 @@ import { EdgeEntity } from "@main/db/entities/edge-entity";
 import { NodeEntity } from "@main/db/entities/node-entity";
 import { ipcMain } from "electron";
 import { ipcChannel } from "./contants";
+import { And, Equal, In, Not } from "typeorm";
+import res from "@common/vo/res";
 
 export function init() {
     ipcMain.handle(ipcChannel.diagram_mk, async (_, diagramVo: DiagramVO) => {
@@ -29,31 +31,56 @@ export function init() {
     ipcMain.handle(ipcChannel.diagram_get, async (_, id: number): Promise<Res<DiagramVO>> => {
         const repos = datasource.getRepository(DiagramEntity);
         const nodeRepos = datasource.getRepository(NodeEntity);
-        const edgeRepos = datasource.getRepository(EdgeEntity);
         const res = await repos.findOne({ where: { id } })
         if (!res) {
+            if (id == 0) {
+                let diagramRes = await repos.save({
+                    nodes: [],
+                    edges: [],
+                    startNode: undefined,
+                    endNode: undefined,
+                    id: 0,
+                    createdAt: undefined,
+                    updatedAt: undefined,
+                    name: '',
+                    description: '',
+                    parentType: "root"
+                })
+                if (!diagramRes) {
+                    return Res.failed("create diagram failed")
+                }
+                let startNodeRes = await nodeRepos.save({
+
+                    type: 0,
+                    diagramId: 0,
+                    id: 0,
+                    createdAt: undefined,
+                    updatedAt: undefined,
+                    name: '',
+                    description: ''
+
+                })
+                if (!startNodeRes) {
+                    return Res.failed("create start node failed")
+                }
+                let endNodeRes = await nodeRepos.save({
+                    type: 0,
+                    diagramId: 0,
+                    id: 1,
+                    createdAt: undefined,
+                    updatedAt: undefined,
+                    name: '',
+                    description: ''
+                })
+                if (!endNodeRes) {
+                    return Res.failed("create end node failed")
+                }
+                return await getDiagramById(id);
+
+            }
             return Res.failed(null);
         } else {
-            const nodes = await nodeRepos.find({ where: { diagramId: res.id } })
-            const edges = await edgeRepos.find({ where: { diagramId: res.id } })
-            let startNode: NodeVO
-            let endNode: NodeVO
-            if (res.parentType == "edge") {
-                const parentEdge = await edgeRepos.findOne({ where: { id: res.parentId } })
-                startNode = await nodeRepos.findOne({ where: { id: parentEdge.startNodeId } });
-                endNode = await nodeRepos.findOne({ where: { id: parentEdge.endNodeId } });
-            } else if (res.parentType == "root") {
-                startNode = await nodeRepos.findOne({ where: { id: 0 } })
-                endNode = await nodeRepos.findOne({ where: { id: 1 } });
-            }
-            let diagramVO: DiagramVO = {
-                ...res,
-                nodes: nodes,
-                edges: edges,
-                startNode: startNode,
-                endNode: endNode
-            }
-            return Res.ok(diagramVO)
+            return await getDiagramById(id);
 
         }
     })
@@ -131,3 +158,33 @@ export function init() {
     });
 
 }
+async function getDiagramById(id: number) {
+    const repos = datasource.getRepository(DiagramEntity)
+    const res = await repos.findOne({ where: { id } })
+    const nodeRepos = datasource.getRepository(NodeEntity)
+    const edgeRepos = datasource.getRepository(EdgeEntity)
+    
+    let startNode:NodeEntity
+    let endNode:NodeEntity
+    if (res.parentType == "edge") {
+        const parentEdge = await edgeRepos.findOne({ where: { id: res.parentId } });
+        startNode = await nodeRepos.findOne({ where: { id: parentEdge.startNodeId } });
+        endNode = await nodeRepos.findOne({ where: { id: parentEdge.endNodeId } });
+    }else if(res.parentType == "root"){
+        startNode = await nodeRepos.findOne({ where: { id: 0 } });
+        endNode = await nodeRepos.findOne({ where: { id: 1 } });
+
+    }
+
+    const nodes = await nodeRepos.find({ where: { diagramId: id, "id": Not(In([startNode.id, endNode.id])) } });
+    const edges = await edgeRepos.find({ where: { diagramId: res.id } });
+    let diagramVO: DiagramVO = {
+        ...res,
+        nodes: nodes,
+        edges: edges,
+        startNode: startNode,
+        endNode: endNode
+    };
+    return Res.ok(diagramVO);
+}
+

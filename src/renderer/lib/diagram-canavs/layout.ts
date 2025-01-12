@@ -1,6 +1,7 @@
 import dagre from "@dagrejs/dagre";
 import { INode } from "./elements/node-element";
 import { IEdge } from "./elements/edge-element";
+import { NodeVO } from "@common/vo/diagram-bo";
 export default function layoutElementByDarge(props: {
     nodeElements: INode[],
     edgeElmenets: IEdge[],
@@ -23,13 +24,20 @@ export default function layoutElementByDarge(props: {
     g.setDefaultEdgeLabel(function () {
         return {};
     });
-
     props.nodeElements.forEach((node) => {
         g.setNode(String(node.data.id), {
             width: node.size.width,
             height: node.size.height,
         });
     });
+    g.setNode(String(props.startElement.data.id), {
+        width: props.startElement.size.width,
+        height: props.startElement.size.height
+    })
+    g.setNode(String(props.endElement.data.id), {
+        width: props.endElement.size.width,
+        height: props.endElement.size.height
+    })
     props.edgeElmenets.forEach((edge) => {
         const { startNodeId, endNodeId } = edge.data;
         g.setEdge(String(startNodeId), String(endNodeId));
@@ -39,22 +47,33 @@ export default function layoutElementByDarge(props: {
     let minY = Infinity;
     let maxY = -Infinity;
 
+
+
     g.nodes().forEach((nodeId) => {
-        const { y } = g.node(nodeId);
-        minY = Math.min(minY, y);
-        maxY = Math.max(maxY, y);
+        let aNode = g.node(nodeId)
+        if (aNode) {
+            const { width, height, x, y } = aNode;
+            minY = Math.min(minY, y);
+            maxY = Math.max(maxY, y);
+        }
     });
 
     const offsetY = (props.diagramheight - (maxY - minY)) / 2 - minY;
-    debugger
-    props.nodeElements.forEach((node) => {
+    function setNodePostion(node:INode){
         const { width, height, x, y } = g.node(String(node.data.id));
         node.position = {
             x: x - width / 2,
             y: y - height / 2 + offsetY
         }
+    }
+
+    props.nodeElements.forEach((node) => {
+        setNodePostion(node)
 
     });
+    setNodePostion(props.startElement)
+    setNodePostion(props.endElement)
+
 
     props.edgeElmenets.forEach((edge) => {
         const e = g.edge({ v: String(edge.data.startNodeId), w: String(edge.data.endNodeId) });

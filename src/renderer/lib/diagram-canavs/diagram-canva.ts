@@ -10,7 +10,7 @@ import { Status } from "@common/vo/res";
 const DEFAULT_NODE_WIDTH = 50
 const DEFAULT_NODE_HEIGT = 50
 const DEFAULT_EDGE_WIDTH = 5
-class DiagramLayer implements Listenable {
+class DiagramLayer implements Listenable,Drawable {
   name: string
   width: number
   height: number
@@ -157,7 +157,7 @@ class DiagramLayer implements Listenable {
         endNodeId: newNodeVO.id,
         diagramId: this.diagramId,
         type: 1,
-        id: 0,
+        id: undefined,
         createdAt: undefined,
         updatedAt: undefined,
         name: "",
@@ -168,15 +168,12 @@ class DiagramLayer implements Listenable {
         throw Error("failed to create new edge")
       }
       newEdgeVO = newEdgeVORes.data
-
       newSelectedNodeIds.push(newNodeVO.id)
-
       this.nodeElements.push(this.addNode(newNodeVO))
       this.edgeElements.push(this.addEdge(newEdgeVO))
-      debugger
-      this.draw()
-
     })
+    this.selectedNodeIds = newSelectedNodeIds
+    this.draw()
   }
   createLastNode() { }
 }

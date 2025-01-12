@@ -40,11 +40,11 @@ const NodeApi: INodeApi = {
     }
 }
 const EdgeApi: IEdgeApi = {
-    mk: function (nodeVo: NodeVO): Promise<Res<EdgeVO>> {
-        return ipcRenderer.invoke(ipcChannel.edge_mk, nodeVo)
+    mk: function (edgeVo: EdgeVO): Promise<Res<EdgeVO>> {
+        return ipcRenderer.invoke(ipcChannel.edge_mk, edgeVo)
     },
     ls: function (): Promise<Res<EdgeVO[]>> {
-        return ipcRenderer.invoke(ipcChannel.node_ls)
+        return ipcRenderer.invoke(ipcChannel.edge_ls)
     },
     get: function (id: number): Promise<Res<EdgeVO>> {
         return ipcRenderer.invoke(ipcChannel.edge_get, id)
