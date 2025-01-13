@@ -76,6 +76,12 @@ export const DiagramDetail: FC<{ diagram: DiagramVO }> = (props) => {
                         data: { htmlEvent: e },
                         sender: 'canvas'
                     })
+                } else if (e.key.toLocaleLowerCase() === 't') {
+                    cnv.eventManager.sendEvent({
+                        name: EventName.createTabNode,
+                        data: { htmlEvent: e },
+                        sender: 'canvas'
+                    })
                 } else if (e.key.toLocaleLowerCase() === 'l') {
                     cnv.eventManager.sendEvent({
                         name: EventName.createLastNode,

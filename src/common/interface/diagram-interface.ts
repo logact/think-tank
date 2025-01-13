@@ -18,7 +18,7 @@ export interface IEdgeApi {
     mk(EdgeVO: EdgeVO): Promise<Res<EdgeVO>>
     ls(): Promise<Res<EdgeVO[]>>
     get(id: number): Promise<Res<EdgeVO>>
-    del(ids: [number]): Promise<Res<number>>
+    del(props: { ids?: [number], edge: { startNodeId: number, endNodeId: number } }): Promise<Res<number>>
 }
 
 export interface MyApi {

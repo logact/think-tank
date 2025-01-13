@@ -1,9 +1,9 @@
 interface BaseModel {
-    id: number,
-    createdAt: Date,
-    updatedAt: Date,
-    name: string,
-    description: string,
+    id?: number,
+    createdAt?: Date,
+    updatedAt?: Date,
+    name?: string,
+    description?: string,
 }
 interface EdgeModel extends BaseModel {
     startNodeId: number,

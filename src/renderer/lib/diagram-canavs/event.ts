@@ -31,6 +31,8 @@ export enum EventName {
     // TODO
     createLastNode,
     // TODO
+    createTabNode,
+    // TODO
     back,
     // TODO
     forward,
@@ -42,7 +44,7 @@ export enum EventName {
     click,
     // TODO
     doubleClick,
-    // TODO
+    // TODO  when  tab, shoud focus the  bro node (by the order of array)
     tab,
     // TODO
     up,

@@ -8,13 +8,14 @@ const datasource = new DataSource({
     database: "test",
     entities: [DiagramEntity, EdgeEntity, NodeEntity],
     synchronize: true,
+    logging: true
 })
 const initdb = function () {
 
     datasource.initialize().then((e) => {
         console.log("init db over " + JSON.stringify(e));
     }).catch(e => {
-        console.error("init db failed",e);
+        console.error("init db failed", e);
 
     })
 }

@@ -20,11 +20,60 @@ class DiagramLayer implements Listenable, Drawable {
   nodeElements: (INode & Drawable)[]
   edgeElements: (IEdge & Drawable)[]
   id: number
-  selectedNodeIds: number[]
+  // selectedNodeIds: number[]
+  selectedNodeMap: Map<number, INode>
+  id2NodeMap: Map<number, INode>
   starNodeElement: (INode & Drawable)
   endNodeElement: (INode & Drawable)
   shfitKeyPressed: boolean
+  selectedEdgeMap: Map<number, IEdge>
 
+  selectedEdge(edge: IEdge) {
+    this.selectedEdgeMap.set(edge.data.id, edge)
+    let startNode = this.id2NodeMap.get(edge.data.startNodeId)
+    let endNode = this.id2NodeMap.get(edge.data.endNodeId)
+    edge.setSelected(1)
+    startNode.setSelected(1)
+    endNode.setSelected(1)
+  }
+  setSelectedNode(node: INode) {
+    this.selectedNodeMap.set(node.data.id, node)
+    node.setSelected(1)
+  }
+  clearSelectedNode() {
+    this.selectedNodeMap.forEach((k, v) => {
+      k.setSelected(2)
+    })
+    this.selectedNodeMap.clear()
+  }
+  deleteSelectedNode(id: number) {
+    let node = this.selectedNodeMap.get(id)
+    if (!node) {
+      return
+    }
+    node.setSelected(1)
+    this.selectedNodeMap.delete(id)
+
+  }
+  setSelectedEdge(node: IEdge) {
+    this.selectedEdgeMap.set(node.data.id, node)
+    node.setSelected(1)
+  }
+  clearSelectedEdge() {
+    this.selectedEdgeMap.forEach((k, v) => {
+      k.setSelected(2)
+    })
+    this.selectedEdgeMap.clear()
+  }
+  deleteSelectedEdge(id: number) {
+    let node = this.selectedEdgeMap.get(id)
+    if (!node) {
+      return
+    }
+    node.setSelected(1)
+    this.selectedEdgeMap.delete(id)
+
+  }
 
   constructor(props: { diagramVO: DiagramVO, canvas: DiagramCanavas, id: number }) {
     const { nodes, edges, name, id, startNode, endNode } = props.diagramVO;
@@ -36,36 +85,51 @@ class DiagramLayer implements Listenable, Drawable {
     this.canvas = props.canvas;
     this.nodeElements = [];
     this.edgeElements = [];
+    this.id2NodeMap = new Map()
+    this.selectedNodeMap = new Map()
+    this.selectedEdgeMap = new Map()
+    this.id = id;
+
+
+
+    
     nodes.forEach(node => {
       this.nodeElements.push(this.addNode(node));
-    })
-    edges.forEach(edge => {
-      this.edgeElements.push(this.addEdge(edge))
     })
     this.starNodeElement = this.addNode(startNode);
     this.endNodeElement = this.addNode(endNode);
 
-    this.id = id;
-    this.selectedNodeIds = [startNode.id];
+    edges.forEach(edge => {
+      const edgeElem = this.addEdge(edge)
+      this.edgeElements.push(edgeElem)
+      if (edgeElem.data.startNodeId === startNode.id && edgeElem.data.endNodeId) {
+        this.selectedEdge(edgeElem)
+      }
+
+    })
+
+
     this.canvas.eventManager.addObserver(this)
 
   }
-  selectNodes(event: Event) {
-
+  handleClick(event: Event) {
     this.nodeElements.forEach(node => {
       if (node.conflict(event.data.position)) {
-        if (!this.shfitKeyPressed) {
-          this.nodeElements.filter(e => this.selectedNodeIds.indexOf(e.data.id) >= 0).forEach(e => {
-            e.selectNode()
-          })
 
-          this.selectedNodeIds = []
-        }
-        node.selectNode()
         if (node.selected) {
-          this.selectedNodeIds.push(node.data.id)
+          this.deleteSelectedEdge(node.data.id)
         } else {
-          this.selectedNodeIds = this.selectedNodeIds.filter(id => id !== node.data.id)
+          this.setSelectedNode(node)
+        }
+      }
+    })
+
+    this.edgeElements.forEach(edge => {
+      if (edge.conflict(event.data.position)) {
+        if (edge.selected) {
+          this.deleteSelectedEdge(edge.data.id)
+        } else {
+          this.setSelectedEdge(edge)
         }
       }
     })
@@ -93,7 +157,8 @@ class DiagramLayer implements Listenable, Drawable {
         break;
       case EventName.click:
         if (this.canvas.currentLayerId == this.id) {
-          this.selectNodes(event);
+          this.handleClick(event);
+
         }
         break;
       case EventName.shift:
@@ -101,7 +166,6 @@ class DiagramLayer implements Listenable, Drawable {
     }
   }
   addNode(node: NodeVO): (INode & Drawable) {
-
     let type = getElementTypeByNumber(node.type)
     let nodeEle: INode = {
       data: node,
@@ -116,7 +180,10 @@ class DiagramLayer implements Listenable, Drawable {
         height: DEFAULT_NODE_WIDTH
       }
     }
-    return createElementByType(type, nodeEle) as (INode & Drawable)
+    const res = createElementByType(type, nodeEle) as (INode & Drawable)
+    this.id2NodeMap.set(res.data.id, res)
+    return res
+
 
   }
   addEdge(edge: EdgeVO): IEdge & Drawable {
@@ -138,7 +205,6 @@ class DiagramLayer implements Listenable, Drawable {
       }
     }
     return createElementByType(type, nodeEle) as (IEdge & Drawable)
-
   }
 
   layout() {
@@ -150,13 +216,14 @@ class DiagramLayer implements Listenable, Drawable {
       startElement: this.starNodeElement,
       endElement: this.endNodeElement
     });
+  
   }
   clear() {
 
     this.canvas.canavas.getContext("2d").clearRect(0, 0, this.width, this.height)
   }
   draw() {
-    debugger
+
     this.layout()
     this.clear()
     this.nodeElements.forEach((elem) => {
@@ -169,8 +236,11 @@ class DiagramLayer implements Listenable, Drawable {
     this.endNodeElement.draw()
   }
   createNextNode() {
-    let newSelectedNodeIds: number[] = [];
-    this.selectedNodeIds.forEach(async (nodeId) => {
+    if (!this.selectedEdgeMap || this.selectedEdgeMap.size <= 0) {
+      alert("no edge is selected!")
+      return
+    }
+    this.selectedEdgeMap.forEach(async (edge) => {
       let newNodeVO: NodeVO = {
         type: 0,
         diagramId: this.diagramId,
@@ -180,6 +250,8 @@ class DiagramLayer implements Listenable, Drawable {
         name: "new node",
         description: ""
       }
+      let startNode = this.id2NodeMap.get(edge.data.startNodeId)
+      let endNode = this.id2NodeMap.get(edge.data.endNodeId)
       const nodeMkRes = await window.myapi.node.mk(newNodeVO)
       if (nodeMkRes.code !== Status.ok) {
         throw new Error(`error create new node,when create next node msg=${nodeMkRes.msg} `)
@@ -187,32 +259,34 @@ class DiagramLayer implements Listenable, Drawable {
       newNodeVO = nodeMkRes.data
 
       let newEdgeVO: EdgeVO = {
-        startNodeId: nodeId,
+        startNodeId: startNode.data.id,
         endNodeId: newNodeVO.id,
         diagramId: this.diagramId,
         type: 1,
-        id: undefined,
-        createdAt: undefined,
-        updatedAt: undefined,
-        name: "",
-        description: ""
+        name: "new edge"
       }
       let newEdgeVORes = await window.myapi.edge.mk(newEdgeVO)
       if (newEdgeVORes.code != Status.ok) {
         throw Error("failed to create new edge")
       }
+      let deleteOldEdgeRes = await window.myapi.edge.del({
+        edge: {
+          startNodeId: startNode.data.id,
+          endNodeId: endNode.data.id
+        }
+      })
+      if (deleteOldEdgeRes.code !== Status.ok) {
+        alert(`delete the old connection between ${startNode.data.id}-${endNode.data.id} failed id = ${edge.data.id}`)
+        console.error(`delete the old connection between ${startNode.data.id}-${endNode.data.id} failed id = ${edge.data.id}`)
+      }
       newEdgeVO = newEdgeVORes.data
-      newSelectedNodeIds.push(newNodeVO.id)
-      this.nodeElements.push(this.addNode(newNodeVO))
+      const newEdgeElem = this.addEdge(newEdgeVO);
+      const newNodeEleme = this.addNode(newNodeVO)
+      this.selectedEdge(newEdgeElem)
+      this.nodeElements.push(newNodeEleme)
       this.edgeElements.push(this.addEdge(newEdgeVO))
     })
-    this.nodeElements.filter(e => this.selectedNodeIds.indexOf(e.data.id) >= 0).forEach(e => {
-      e.selectNode()
-    })
-    this.selectedNodeIds = newSelectedNodeIds
-    this.nodeElements.filter(e => this.selectedNodeIds.indexOf(e.data.id) >= 0).forEach(e => {
-      e.selectNode()
-    })
+
     this.draw()
   }
   createLastNode() { }

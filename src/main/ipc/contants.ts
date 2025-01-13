@@ -13,5 +13,7 @@ export enum ipcChannel {
     edge_ls = "edge_ls",
     edge_get = "edge_get",
     edge_del = "edge_del",
+    edge_del_by_points = "edge_del_by_points",
+    
 
 }

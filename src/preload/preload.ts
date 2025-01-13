@@ -49,10 +49,11 @@ const EdgeApi: IEdgeApi = {
     get: function (id: number): Promise<Res<EdgeVO>> {
         return ipcRenderer.invoke(ipcChannel.edge_get, id)
     },
-    del: function (ids: [number]): Promise<Res<number>> {
-        return ipcRenderer.invoke(ipcChannel.edge_del, ids)
+    del: function (props: { ids?: [number], edge: { startNodeId: number, endNodeId: number } }): Promise<Res<number>> {
+        return ipcRenderer.invoke(ipcChannel.edge_del, props)
 
     }
+
 }
 
 

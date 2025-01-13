@@ -29,60 +29,77 @@ export function init() {
         }
     })
     ipcMain.handle(ipcChannel.diagram_get, async (_, id: number): Promise<Res<DiagramVO>> => {
-        const repos = datasource.getRepository(DiagramEntity);
-        const nodeRepos = datasource.getRepository(NodeEntity);
-        const res = await repos.findOne({ where: { id } })
-        if (!res) {
-            if (id == 0) {
-                let diagramRes = await repos.save({
-                    nodes: [],
-                    edges: [],
-                    startNode: undefined,
-                    endNode: undefined,
-                    id: 0,
-                    createdAt: undefined,
-                    updatedAt: undefined,
-                    name: '',
-                    description: '',
-                    parentType: "root"
-                })
-                if (!diagramRes) {
-                    return Res.failed("create diagram failed")
-                }
-                let startNodeRes = await nodeRepos.save({
+        const res = await datasource.transaction(async (transactionManager) => {
 
-                    type: 0,
-                    diagramId: 0,
-                    id: 0,
-                    createdAt: undefined,
-                    updatedAt: undefined,
-                    name: '',
-                    description: ''
+            const repos = datasource.getRepository(DiagramEntity);
+            const nodeRepos = datasource.getRepository(NodeEntity);
+            const edgeRepos = datasource.getRepository(EdgeEntity);
+            const res = await repos.findOne({ where: { id } })
+            if (!res) {
+                if (id == 0) {
+                    let diagramRes = await repos.save({
+                        nodes: [],
+                        edges: [],
+                        startNode: undefined,
+                        endNode: undefined,
+                        id: 0,
+                        createdAt: undefined,
+                        updatedAt: undefined,
+                        name: '',
+                        description: '',
+                        parentType: "root"
+                    })
+                    if (!diagramRes) {
+                        return Res.failed("create diagram failed")
+                    }
+                    let startNodeRes = await nodeRepos.save({
 
-                })
-                if (!startNodeRes) {
-                    return Res.failed("create start node failed")
+                        type: 0,
+                        diagramId: 0,
+                        id: 0,
+                        createdAt: undefined,
+                        updatedAt: undefined,
+                        name: '',
+                        description: ''
+
+                    })
+                    if (!startNodeRes) {
+                        return Res.failed("create start node failed")
+                    }
+                    let endNodeRes = await nodeRepos.save({
+                        type: 0,
+                        diagramId: 0,
+                        id: 1,
+                        createdAt: undefined,
+                        updatedAt: undefined,
+                        name: '',
+                        description: ''
+                    })
+                    let newEdge: EdgeEntity = {
+                        type: 1,
+                        startNodeId: startNodeRes.id,
+                        endNodeId: endNodeRes.id,
+                        diagramId: id,
+                        name: "newEdge",
+                        id: 0,
+                    }
+                    let edgeRes = await edgeRepos.save(newEdge)
+                    if (!edgeRes) {
+                        return Res.failed("create the first edge failed")
+                    }
+                    if (!endNodeRes) {
+                        return Res.failed("create end node failed")
+                    }
+                    return await getDiagramById(id);
+
                 }
-                let endNodeRes = await nodeRepos.save({
-                    type: 0,
-                    diagramId: 0,
-                    id: 1,
-                    createdAt: undefined,
-                    updatedAt: undefined,
-                    name: '',
-                    description: ''
-                })
-                if (!endNodeRes) {
-                    return Res.failed("create end node failed")
-                }
+                return Res.failed(null);
+            } else {
                 return await getDiagramById(id);
 
             }
-            return Res.failed(null);
-        } else {
-            return await getDiagramById(id);
-
-        }
+        })
+        return res as Res<DiagramVO>;
     })
     ipcMain.handle(ipcChannel.diagram_ls, async (_, id: number) => {
 
@@ -146,16 +163,28 @@ export function init() {
         }
     });
 
-
-    ipcMain.handle(ipcChannel.edge_del, async (_, id: number[]) => {
+    ipcMain.handle(ipcChannel.edge_del, async (_, props: { ids?: [number], edge: { startNodeId: number, endNodeId: number } }) => {
         const edgeRepos = datasource.getRepository(EdgeEntity);
-        const res = await edgeRepos.delete(id);
-        if (res.affected === 1) {
+
+        let res;
+        if (props.ids && props.ids.length > 0) {
+            res = await edgeRepos.delete(props.ids);
+        } else if (props.edge.endNodeId && props.edge.startNodeId) {
+            res = await edgeRepos.delete({ "startNodeId": props.edge.startNodeId, "endNodeId": props.edge.endNodeId });
+            if (res.affected === 1) {
+                return Res.ok(res.affected);
+            } else {
+                return Res.failed("Failed to delete edge");
+            }
+        }
+        if (res && res.affected === 1) {
             return Res.ok(res.affected);
         } else {
             return Res.failed("Failed to delete edge");
         }
     });
+
+
 
 }
 async function getDiagramById(id: number) {
@@ -163,21 +192,21 @@ async function getDiagramById(id: number) {
     const res = await repos.findOne({ where: { id } })
     const nodeRepos = datasource.getRepository(NodeEntity)
     const edgeRepos = datasource.getRepository(EdgeEntity)
-    
-    let startNode:NodeEntity
-    let endNode:NodeEntity
+
+    let startNode: NodeEntity
+    let endNode: NodeEntity
     if (res.parentType == "edge") {
         const parentEdge = await edgeRepos.findOne({ where: { id: res.parentId } });
         startNode = await nodeRepos.findOne({ where: { id: parentEdge.startNodeId } });
         endNode = await nodeRepos.findOne({ where: { id: parentEdge.endNodeId } });
-    }else if(res.parentType == "root"){
+    } else if (res.parentType == "root") {
         startNode = await nodeRepos.findOne({ where: { id: 0 } });
         endNode = await nodeRepos.findOne({ where: { id: 1 } });
 
     }
 
     const nodes = await nodeRepos.find({ where: { diagramId: id, "id": Not(In([startNode.id, endNode.id])) } });
-    const edges = await edgeRepos.find({ where: { diagramId: res.id } });
+    const edges = await edgeRepos.find({ where: { diagramId: id } });
     let diagramVO: DiagramVO = {
         ...res,
         nodes: nodes,

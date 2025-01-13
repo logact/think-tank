@@ -4,22 +4,22 @@ import { Column, CreateDateColumn, DeleteDateColumn, PrimaryGeneratedColumn, Upd
 export abstract class BaseColumnEntity implements BaseModel {
 
     @PrimaryGeneratedColumn()
-    id: number;
+    id?: number;
 
 
     @CreateDateColumn()
-    createdAt: Date;
+    createdAt?: Date;
 
 
     @UpdateDateColumn()
-    updatedAt: Date;
+    updatedAt?: Date;
 
     @Column({ nullable: true })
     name: string;
 
     @Column({ nullable: true })
-    description: string;
+    description?: string;
 
     @DeleteDateColumn()
-    isDeleted: boolean;
+    isDeleted?: boolean;
 }
