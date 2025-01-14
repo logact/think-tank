@@ -26,15 +26,15 @@ class DiagramLayer implements Listenable, Drawable {
   starNodeElement: (INode & Drawable)
   endNodeElement: (INode & Drawable)
   shfitKeyPressed: boolean
-  selectedEdgeMap: Map<number, IEdge>
+  latestSelectedEdge: IEdge
 
   selectedEdge(edge: IEdge) {
-    this.selectedEdgeMap.set(edge.data.id, edge)
     let startNode = this.id2NodeMap.get(edge.data.startNodeId)
     let endNode = this.id2NodeMap.get(edge.data.endNodeId)
     edge.setSelected(1)
     startNode.setSelected(1)
     endNode.setSelected(1)
+    this.latestSelectedEdge = edge
   }
   setSelectedNode(node: INode) {
     this.selectedNodeMap.set(node.data.id, node)
@@ -56,24 +56,10 @@ class DiagramLayer implements Listenable, Drawable {
 
   }
   setSelectedEdge(node: IEdge) {
-    this.selectedEdgeMap.set(node.data.id, node)
     node.setSelected(1)
   }
-  clearSelectedEdge() {
-    this.selectedEdgeMap.forEach((k, v) => {
-      k.setSelected(2)
-    })
-    this.selectedEdgeMap.clear()
-  }
-  deleteSelectedEdge(id: number) {
-    let node = this.selectedEdgeMap.get(id)
-    if (!node) {
-      return
-    }
-    node.setSelected(1)
-    this.selectedEdgeMap.delete(id)
 
-  }
+
 
   constructor(props: { diagramVO: DiagramVO, canvas: DiagramCanavas, id: number }) {
     const { nodes, edges, name, id, startNode, endNode } = props.diagramVO;
@@ -87,7 +73,6 @@ class DiagramLayer implements Listenable, Drawable {
     this.edgeElements = [];
     this.id2NodeMap = new Map()
     this.selectedNodeMap = new Map()
-    this.selectedEdgeMap = new Map()
     this.id = id;
 
 
@@ -117,7 +102,7 @@ class DiagramLayer implements Listenable, Drawable {
       if (node.conflict(event.data.position)) {
 
         if (node.selected) {
-          this.deleteSelectedEdge(node.data.id)
+          this.deleteSelectedNode(node.data.id)
         } else {
           this.setSelectedNode(node)
         }
@@ -126,11 +111,8 @@ class DiagramLayer implements Listenable, Drawable {
 
     this.edgeElements.forEach(edge => {
       if (edge.conflict(event.data.position)) {
-        if (edge.selected) {
-          this.deleteSelectedEdge(edge.data.id)
-        } else {
-          this.setSelectedEdge(edge)
-        }
+        this.setSelectedEdge(edge)
+
       }
     })
 
@@ -235,74 +217,79 @@ class DiagramLayer implements Listenable, Drawable {
     this.starNodeElement.draw()
     this.endNodeElement.draw()
   }
-  createNextNode() {
-    if (!this.selectedEdgeMap || this.selectedEdgeMap.size <= 0) {
-      alert("no edge is selected!")
+  async createNextNode() {
+    if (!this.latestSelectedEdge) {
       return
     }
-    this.selectedEdgeMap.forEach(async (edge) => {
-      let newNodeVO: NodeVO = {
-        type: 0,
-        diagramId: this.diagramId,
-        id: undefined,
-        createdAt: undefined,
-        updatedAt: undefined,
-        name: "new node",
-        description: ""
-      }
-      let startNode = this.id2NodeMap.get(edge.data.startNodeId)
-      let endNode = this.id2NodeMap.get(edge.data.endNodeId)
-      const nodeMkRes = await window.myapi.node.mk(newNodeVO)
-      if (nodeMkRes.code !== Status.ok) {
-        throw new Error(`error create new node,when create next node msg=${nodeMkRes.msg} `)
-      }
-      newNodeVO = nodeMkRes.data
+
+
+    let newNodeVO: NodeVO = {
+      type: 0,
+      diagramId: this.diagramId,
+      id: undefined,
+      createdAt: undefined,
+      updatedAt: undefined,
+      name: "new node",
+      description: ""
+    }
+    let startNode = this.id2NodeMap.get(this.latestSelectedEdge.data.startNodeId)
+    let endNode = this.id2NodeMap.get(this.latestSelectedEdge.data.endNodeId)
+    const nodeMkRes = await window.myapi.node.mk(newNodeVO)
+    if (nodeMkRes.code !== Status.ok) {
+      throw new Error(`error create new node,when create next node msg=${nodeMkRes.msg} `)
+    }
+    newNodeVO = nodeMkRes.data
 
 
 
-      // seprate the edge to 2 segment
+    // seprate the edge to 2 segment
 
-      let deleteOldEdgeRes = await window.myapi.edge.del({
-        edge: {
-          startNodeId: startNode.data.id,
-          endNodeId: endNode.data.id
-        }
-      })
-      let newEdgeVO1: EdgeVO = {
+    let deleteOldEdgeRes = await window.myapi.edge.del({
+      edge: {
         startNodeId: startNode.data.id,
-        endNodeId: newNodeVO.id,
-        diagramId: this.diagramId,
-        type: 1,
-        "name": `edge from edge ${startNode.data.id} - ${endNode.data.id}`,
+        endNodeId: endNode.data.id
       }
-      let newEdge1Res = await window.myapi.edge.mk(newEdgeVO1)
-      let newEdgeVO2: EdgeVO = {
-        startNodeId: newNodeVO.id,
-        endNodeId: endNode.data.id,
-        diagramId: this.diagramId,
-        type: 1,
-        "name": `edge from edge ${startNode.data.id} - ${endNode.data.id}`,
-      }
-
-      let newEdge2Res = await window.myapi.edge.mk(newEdgeVO2)
-
-
-      if (deleteOldEdgeRes.code !== Status.ok) {
-        alert(`delete the old connection between ${startNode.data.id}-${endNode.data.id} failed id = ${edge.data.id}`)
-        console.error(`delete the old connection between ${startNode.data.id}-${endNode.data.id} failed id = ${edge.data.id}`)
-      }
-      const newEdgeElem1 = this.addEdge(newEdgeVO1);
-      const newEdgeElem2 = this.addEdge(newEdgeVO2);
-      const newNodeEleme = this.addNode(newNodeVO)
-      this.nodeElements.push(newNodeEleme)
-      this.edgeElements.push(newEdgeElem1)
-      this.edgeElements.push(newEdgeElem2)
-      this.selectedEdge(newEdgeElem1)
-      this.selectedEdge(newEdgeElem2)
     })
+    debugger
+    this.edgeElements = this.edgeElements.filter(e => {
+      return !(e.data.startNodeId == startNode.data.id && e.data.endNodeId == endNode.data.id)
+    })
+    let newEdgeVO1: EdgeVO = {
+      startNodeId: startNode.data.id,
+      endNodeId: newNodeVO.id,
+      diagramId: this.diagramId,
+      type: 1,
+      "name": `edge from edge ${startNode.data.id} - ${endNode.data.id}`,
+    }
+    let newEdge1Res = await window.myapi.edge.mk(newEdgeVO1)
+    let newEdgeVO2: EdgeVO = {
+      startNodeId: newNodeVO.id,
+      endNodeId: endNode.data.id,
+      diagramId: this.diagramId,
+      type: 1,
+      "name": `edge from edge ${startNode.data.id} - ${endNode.data.id}`,
+    }
+
+    let newEdge2Res = await window.myapi.edge.mk(newEdgeVO2)
+
+
+    if (deleteOldEdgeRes.code !== Status.ok) {
+      alert(`delete the old connection between ${startNode.data.id}-${endNode.data.id} failed id = ${this.latestSelectedEdge.data.id}`)
+      console.error(`delete the old connection between ${startNode.data.id}-${endNode.data.id} failed id = ${this.latestSelectedEdge.data.id}`)
+    }
+    const newEdgeElem1 = this.addEdge(newEdgeVO1);
+    const newEdgeElem2 = this.addEdge(newEdgeVO2);
+    const newNodeEleme = this.addNode(newNodeVO)
+    this.nodeElements.push(newNodeEleme)
+    this.edgeElements.push(newEdgeElem1)
+    this.edgeElements.push(newEdgeElem2)
+    this.latestSelectedEdge = newEdgeElem2
+
+    this.selectedEdge(newEdgeElem2)
+
 
     this.draw()
-  } 
+  }
   createLastNode() { }
 }
 export interface IDiagramCanvas extends Listenable {

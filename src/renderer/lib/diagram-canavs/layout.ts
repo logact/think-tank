@@ -59,7 +59,7 @@ export default function layoutElementByDarge(props: {
 
     props.startElement.position = startNodePosition
     props.endElement.position = endNodePosition
-    // optimize the offset to make the darge diagram in the aelign the center between the start and endƒ
+    // optimize the offset to make the darge diagram in the aelign the center between the start and end
     const offsetY = (props.diagramheight - (maxY - minY)) / 2 - minY;
     const offsetX = startNodePosition.x + 100
 
@@ -109,39 +109,33 @@ export default function layoutElementByDarge(props: {
     });
 
     props.edgeElmenets.forEach((edge) => {
-        const e = g.edge({ v: String(edge.data.startNodeId), w: String(edge.data.endNodeId) });
-        if (e) {
-            let points = e.points;
-            let fromPosition = points[0];
-            let toPosition = points[2];
-            fromPosition.y += offsetY;
-            toPosition.y += offsetY;
-            edge.position.start = fromPosition;
-            edge.position.end = toPosition;
-        }
+        // const e = g.edge({ v: String(edge.data.startNodeId), w: String(edge.data.endNodeId) });
+        // if (e) {
+        edge.position = connectNode(id2nodeElem.get(edge.data.startNodeId), id2nodeElem.get(edge.data.endNodeId))
+        // }
     });
 
 
     // ========================set the edge edge with the end node and start node =====================================
-    props.edgeElmenets.forEach(e => {
-        // from start node 
-        if (e.data.startNodeId === props.startElement.data.id && e.data.endNodeId === props.endElement.data.id) {
-            // if the line is the line between the 2 point
-            e.position = connectNode(props.startElement, props.endElement)
+    // props.edgeElmenets.forEach(e => {
+    //     // from start node 
+    //     if (e.data.startNodeId === props.startElement.data.id && e.data.endNodeId === props.endElement.data.id) {
+    //         // if the line is the line between the 2 point
+    //         e.position = connectNode(props.startElement, props.endElement)
 
-        } else if (e.data.startNodeId === props.startElement.data.id) {
-            let dargePositon = g.node(String(e.data.endNodeId))
-            if (dargePositon) {
-                e.position = connectNode(props.startElement, id2nodeElem.get(e.data.endNodeId))
-            }
-        } else if (e.data.endNodeId === props.endElement.data.id) {
-            let dargePositon = g.node(String(e.data.startNodeId));
-            if (dargePositon) {
-                e.position = connectNode(id2nodeElem.get(e.data.startNodeId), props.endElement)
-            }
-        }
+    //     } else if (e.data.startNodeId === props.startElement.data.id) {
+    //         let dargePositon = g.node(String(e.data.endNodeId))
+    //         if (dargePositon) {
+    //             e.position = connectNode(props.startElement, id2nodeElem.get(e.data.endNodeId))
+    //         }
+    //     } else if (e.data.endNodeId === props.endElement.data.id) {
+    //         let dargePositon = g.node(String(e.data.startNodeId));
+    //         if (dargePositon) {
+    //             e.position = connectNode(id2nodeElem.get(e.data.startNodeId), props.endElement)
+    //         }
+    //     }
 
-    })
+    // })
 
 
 }

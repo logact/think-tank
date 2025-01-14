@@ -25,9 +25,9 @@ export class DirectLineEdgeElem implements IEdge, Drawable {
   position: { start: { x: number; y: number; }; end: { x: number; y: number; }; };
   setSelected(value: 1 | 2) {
     if (value == 1) {
-      this.selected = false;
-    } else if (value == 2) {
       this.selected = true;
+    } else if (value == 2) {
+      this.selected = false;
     } else {
       this.selected = !this.selected
     }
