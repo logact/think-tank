@@ -13,7 +13,7 @@ const datasource = new DataSource({
 const initdb = function () {
 
     datasource.initialize().then((e) => {
-        console.log("init db over " + JSON.stringify(e));
+        console.log("init db over ");
     }).catch(e => {
         console.error("init db failed", e);
 

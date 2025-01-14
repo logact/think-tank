@@ -11,8 +11,12 @@ export default function layoutElementByDarge(props: {
 }) {
     // caculate the start and end 
 
+    const id2nodeElem = new Map<number, INode>()
+    id2nodeElem.set(props.startElement.data.id, props.startElement)
+    id2nodeElem.set(props.endElement.data.id, props.endElement)
     // const { nodes, ÷edges } = elements;
     // Create a new directed graph
+    debugger
     const g = new dagre.graphlib.Graph({ directed: true });
     // Set an object for the graph label
     g.setGraph({ rankdir: "LR", align: "UR" });
@@ -26,11 +30,12 @@ export default function layoutElementByDarge(props: {
             width: node.size.width,
             height: node.size.height,
         });
+        id2nodeElem.set(node.data.id, node)
     });
 
     props.edgeElmenets.forEach((edge) => {
         // filter the edge from the start node and edge to end node
-        if (edge.data.startNodeId !== props.startElement.data.id || edge.data.endNodeId !== props.endElement.data.id) {
+        if (edge.data.startNodeId !== props.startElement.data.id && edge.data.endNodeId !== props.endElement.data.id) {
             const { startNodeId, endNodeId } = edge.data;
             g.setEdge(String(startNodeId), String(endNodeId));
         }
@@ -54,60 +59,54 @@ export default function layoutElementByDarge(props: {
 
     props.startElement.position = startNodePosition
     props.endElement.position = endNodePosition
-
+    // optimize the offset to make the darge diagram in the aelign the center between the start and endƒ
     const offsetY = (props.diagramheight - (maxY - minY)) / 2 - minY;
     const offsetX = startNodePosition.x + 100
 
-    function setNodePostion(node: INode) {
-        const { width, height, x, y } = g.node(String(node.data.id));
-        node.position = {
+    function offsetDargeNode({ x, y, width, height }: { x: number, y: number, width: number, height: number }) {
+        return {
             "x": x - width / 2 + offsetX,
             "y": y - height / 2 + offsetY
         }
+
+    }
+    function connectNode(node1: INode, node2: INode) {
+        let x1 = node1.position.x;
+        let y1 = node1.position.y;
+        let x2 = node2.position.x;
+        let y2 = node2.position.y;
+        let w1 = node1.size.width;
+        let h1 = node1.size.height;
+        let w2 = node2.size.width;
+        let h2 = node2.size.height;
+        const start = {
+            x: x1 + w1,
+            y: y1 + h1 / 2
+        }
+        const end = {
+            x: x2,
+            y: y2 + h2 / 2
+        }
+        return {
+            start,
+            end
+        }
+
     }
 
 
-    // connect the start->end
-    props.edgeElmenets.forEach(e => {
-        // from start node 
-        if (e.data.startNodeId === props.startElement.data.id && e.data.endNodeId === props.endElement.data.id) {
-            // if the line is the line between the 2 point
-            let startX = props.startElement.position.x + props.startElement.size.width / 2;
-            let startY = props.startElement.position.y + props.startElement.size.height / 2;
-            let endX = props.endElement.position.x + props.startElement.size.width / 2;
-            let endY = props.endElement.position.y + props.endElement.size.height / 2;
-            e.position.start = {
-                x: startX,
-                y: startY
-            }
+    function setNodePostion(node: INode) {
+        node.position = offsetDargeNode(g.node(String(node.data.id)))
+    }
 
-            e.position.end = {
-                x: endX,
-                y: endY
-            }
-        } else if (e.data.startNodeId === props.startElement.data.id) {
-            let dargePositon = g.node(String(e.data.endNodeId))
-            if (dargePositon) {
-                e.position.end = { "x": dargePositon.x, "y": dargePositon.y }
-                e.position.start = props.startElement.position
-            }
-        } else if (e.data.endNodeId === props.endElement.data.id) {
-            let dargePositon = g.node(String(e.data.startNodeId));
-            if (dargePositon) {
-                e.position.start = { "x": dargePositon.x, "y": dargePositon.y }
-                e.position.end = props.endElement.position
-            }
-        }
 
-    })
 
+    // ==================== darge calculte over ============================================================================
 
 
     props.nodeElements.forEach((node) => {
         setNodePostion(node)
     });
-    debugger
-
 
     props.edgeElmenets.forEach((edge) => {
         const e = g.edge({ v: String(edge.data.startNodeId), w: String(edge.data.endNodeId) });
@@ -121,4 +120,28 @@ export default function layoutElementByDarge(props: {
             edge.position.end = toPosition;
         }
     });
+
+
+    // ========================set the edge edge with the end node and start node =====================================
+    props.edgeElmenets.forEach(e => {
+        // from start node 
+        if (e.data.startNodeId === props.startElement.data.id && e.data.endNodeId === props.endElement.data.id) {
+            // if the line is the line between the 2 point
+            e.position = connectNode(props.startElement, props.endElement)
+
+        } else if (e.data.startNodeId === props.startElement.data.id) {
+            let dargePositon = g.node(String(e.data.endNodeId))
+            if (dargePositon) {
+                e.position = connectNode(props.startElement, id2nodeElem.get(e.data.endNodeId))
+            }
+        } else if (e.data.endNodeId === props.endElement.data.id) {
+            let dargePositon = g.node(String(e.data.startNodeId));
+            if (dargePositon) {
+                e.position = connectNode(id2nodeElem.get(e.data.startNodeId), props.endElement)
+            }
+        }
+
+    })
+
+
 }

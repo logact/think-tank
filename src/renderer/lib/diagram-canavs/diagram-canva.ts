@@ -92,7 +92,7 @@ class DiagramLayer implements Listenable, Drawable {
 
 
 
-    
+
     nodes.forEach(node => {
       this.nodeElements.push(this.addNode(node));
     })
@@ -216,7 +216,7 @@ class DiagramLayer implements Listenable, Drawable {
       startElement: this.starNodeElement,
       endElement: this.endNodeElement
     });
-  
+
   }
   clear() {
 
@@ -258,37 +258,51 @@ class DiagramLayer implements Listenable, Drawable {
       }
       newNodeVO = nodeMkRes.data
 
-      let newEdgeVO: EdgeVO = {
-        startNodeId: startNode.data.id,
-        endNodeId: newNodeVO.id,
-        diagramId: this.diagramId,
-        type: 1,
-        name: "new edge"
-      }
-      let newEdgeVORes = await window.myapi.edge.mk(newEdgeVO)
-      if (newEdgeVORes.code != Status.ok) {
-        throw Error("failed to create new edge")
-      }
+
+
+      // seprate the edge to 2 segment
+
       let deleteOldEdgeRes = await window.myapi.edge.del({
         edge: {
           startNodeId: startNode.data.id,
           endNodeId: endNode.data.id
         }
       })
+      let newEdgeVO1: EdgeVO = {
+        startNodeId: startNode.data.id,
+        endNodeId: newNodeVO.id,
+        diagramId: this.diagramId,
+        type: 1,
+        "name": `edge from edge ${startNode.data.id} - ${endNode.data.id}`,
+      }
+      let newEdge1Res = await window.myapi.edge.mk(newEdgeVO1)
+      let newEdgeVO2: EdgeVO = {
+        startNodeId: newNodeVO.id,
+        endNodeId: endNode.data.id,
+        diagramId: this.diagramId,
+        type: 1,
+        "name": `edge from edge ${startNode.data.id} - ${endNode.data.id}`,
+      }
+
+      let newEdge2Res = await window.myapi.edge.mk(newEdgeVO2)
+
+
       if (deleteOldEdgeRes.code !== Status.ok) {
         alert(`delete the old connection between ${startNode.data.id}-${endNode.data.id} failed id = ${edge.data.id}`)
         console.error(`delete the old connection between ${startNode.data.id}-${endNode.data.id} failed id = ${edge.data.id}`)
       }
-      newEdgeVO = newEdgeVORes.data
-      const newEdgeElem = this.addEdge(newEdgeVO);
+      const newEdgeElem1 = this.addEdge(newEdgeVO1);
+      const newEdgeElem2 = this.addEdge(newEdgeVO2);
       const newNodeEleme = this.addNode(newNodeVO)
-      this.selectedEdge(newEdgeElem)
       this.nodeElements.push(newNodeEleme)
-      this.edgeElements.push(this.addEdge(newEdgeVO))
+      this.edgeElements.push(newEdgeElem1)
+      this.edgeElements.push(newEdgeElem2)
+      this.selectedEdge(newEdgeElem1)
+      this.selectedEdge(newEdgeElem2)
     })
 
     this.draw()
-  }
+  } 
   createLastNode() { }
 }
 export interface IDiagramCanvas extends Listenable {

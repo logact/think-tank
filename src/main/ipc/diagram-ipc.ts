@@ -135,7 +135,7 @@ export function init() {
 
     ipcMain.handle(ipcChannel.node_del, async (_, id: number[]) => {
         const nodeRepos = datasource.getRepository(NodeEntity);
-        const res = await nodeRepos.delete(id);
+        const res = await nodeRepos.softDelete(id);
         if (res.affected === 1) {
             return Res.ok(res.affected);
         } else {
@@ -168,9 +168,9 @@ export function init() {
 
         let res;
         if (props.ids && props.ids.length > 0) {
-            res = await edgeRepos.delete(props.ids);
-        } else if (props.edge.endNodeId && props.edge.startNodeId) {
-            res = await edgeRepos.delete({ "startNodeId": props.edge.startNodeId, "endNodeId": props.edge.endNodeId });
+            res = await edgeRepos.softDelete(props.ids);
+        } else if (props.edge) {
+            res = await edgeRepos.softDelete({ "startNodeId": props.edge.startNodeId, "endNodeId": props.edge.endNodeId });
             if (res.affected === 1) {
                 return Res.ok(res.affected);
             } else {
