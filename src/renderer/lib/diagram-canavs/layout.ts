@@ -16,7 +16,7 @@ export default function layoutElementByDarge(props: {
     id2nodeElem.set(props.endElement.data.id, props.endElement)
     // const { nodes, ÷edges } = elements;
     // Create a new directed graph
-    debugger
+
     const g = new dagre.graphlib.Graph({ directed: true });
     // Set an object for the graph label
     g.setGraph({ rankdir: "LR", align: "UR" });

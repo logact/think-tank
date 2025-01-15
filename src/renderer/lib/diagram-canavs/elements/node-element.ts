@@ -11,7 +11,8 @@ export interface INode {
   size: { width: number, height: number }
   conflict?: (position: { x: number, y: number }) => boolean
   selected?: boolean,
-  setSelected?: (flag?: 1|2) => void
+  setSelected?: (flag?: 1 | 2) => void
+  draw?: () => void
 }
 export class RectangeNodeElem implements INode {
   data: NodeModel;
@@ -30,7 +31,7 @@ export class RectangeNodeElem implements INode {
     this.size = size;
     // this.canavas.eventManager.addObserver(this)
   }
-  setSelected(flag?: 1|2) {
+  setSelected(flag?: 1 | 2) {
     if (flag === 1) {
       this.selected = true;
     } else if (flag === 2) {
@@ -46,8 +47,10 @@ export class RectangeNodeElem implements INode {
   }
 
   draw() {
+
     const { x, y } = this.position;
     const { width, height } = this.size;
+    console.log(`start darw at ${x} ${y} `);
 
     const h5Canavas = this.canavas.canavas as HTMLCanvasElement
     const ctx = h5Canavas.getContext("2d");

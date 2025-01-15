@@ -36,9 +36,10 @@ class DiagramLayer implements Listenable, Drawable {
     endNode.setSelected(1)
     this.latestSelectedEdge = edge
   }
-  setSelectedNode(node: INode) {
+  clickNode(node: INode) {
     this.selectedNodeMap.set(node.data.id, node)
-    node.setSelected(1)
+    node.setSelected()
+    node.draw()
   }
   clearSelectedNode() {
     this.selectedNodeMap.forEach((k, v) => {
@@ -55,8 +56,14 @@ class DiagramLayer implements Listenable, Drawable {
     this.selectedNodeMap.delete(id)
 
   }
-  setSelectedEdge(node: IEdge) {
-    node.setSelected(1)
+  clickEdge(edge: IEdge) {
+    edge.setSelected()
+    if (edge.selected) {
+      this.latestSelectedEdge = edge
+    } else if (edge.data.id === this.latestSelectedEdge.data.id) {
+      this.latestSelectedEdge = null
+    }
+    edge.draw()
   }
 
 
@@ -98,20 +105,28 @@ class DiagramLayer implements Listenable, Drawable {
 
   }
   handleClick(event: Event) {
+    // for debug
+    // const ctx = this.canvas.canavas.getContext("2d")
+    // ctx.beginPath()
+    // ctx.fillStyle = 'green'
+    // ctx.fillRect(event.data.position.x,event.data.position.y,5,5)
+
     this.nodeElements.forEach(node => {
       if (node.conflict(event.data.position)) {
 
         if (node.selected) {
           this.deleteSelectedNode(node.data.id)
         } else {
-          this.setSelectedNode(node)
+          this.clickNode(node)
         }
       }
     })
 
     this.edgeElements.forEach(edge => {
       if (edge.conflict(event.data.position)) {
-        this.setSelectedEdge(edge)
+        console.log(`${edge.data.id} is clicked`);
+        
+        this.clickEdge(edge)
 
       }
     })
@@ -205,6 +220,7 @@ class DiagramLayer implements Listenable, Drawable {
     this.canvas.canavas.getContext("2d").clearRect(0, 0, this.width, this.height)
   }
   draw() {
+    console.log(`${this.id} start to draw`);
 
     this.layout()
     this.clear()
@@ -244,13 +260,13 @@ class DiagramLayer implements Listenable, Drawable {
 
     // seprate the edge to 2 segment
 
-    let deleteOldEdgeRes = await window.myapi.edge.del({
+    await window.myapi.edge.del({
       edge: {
         startNodeId: startNode.data.id,
         endNodeId: endNode.data.id
       }
     })
-    debugger
+
     this.edgeElements = this.edgeElements.filter(e => {
       return !(e.data.startNodeId == startNode.data.id && e.data.endNodeId == endNode.data.id)
     })
@@ -261,7 +277,7 @@ class DiagramLayer implements Listenable, Drawable {
       type: 1,
       "name": `edge from edge ${startNode.data.id} - ${endNode.data.id}`,
     }
-    let newEdge1Res = await window.myapi.edge.mk(newEdgeVO1)
+    await window.myapi.edge.mk(newEdgeVO1)
     let newEdgeVO2: EdgeVO = {
       startNodeId: newNodeVO.id,
       endNodeId: endNode.data.id,
@@ -270,13 +286,9 @@ class DiagramLayer implements Listenable, Drawable {
       "name": `edge from edge ${startNode.data.id} - ${endNode.data.id}`,
     }
 
-    let newEdge2Res = await window.myapi.edge.mk(newEdgeVO2)
+    await window.myapi.edge.mk(newEdgeVO2)
 
 
-    if (deleteOldEdgeRes.code !== Status.ok) {
-      alert(`delete the old connection between ${startNode.data.id}-${endNode.data.id} failed id = ${this.latestSelectedEdge.data.id}`)
-      console.error(`delete the old connection between ${startNode.data.id}-${endNode.data.id} failed id = ${this.latestSelectedEdge.data.id}`)
-    }
     const newEdgeElem1 = this.addEdge(newEdgeVO1);
     const newEdgeElem2 = this.addEdge(newEdgeVO2);
     const newNodeEleme = this.addNode(newNodeVO)
@@ -331,14 +343,14 @@ export class DiagramCanavas implements IDiagramCanvas {
     this.eventManager.addObserver(this)
   }
   handle(event: Event) {
-    switch (event.name) {
-      case EventName.containerResize:
-        this.width = event.data.width
-        this.height = event.data.height
-        this.canavas.width = this.width
-        this.canavas.height = this.height
-        break;
-    }
+    // switch (event.name) {
+    // case EventName.containerResize:
+    //   this.width = event.data.width
+    //   this.height = event.data.height
+    //   this.canavas.width = this.width
+    //   this.canavas.height = this.height
+    //   break;
+    // }
   }
   destroy() {
     return;
