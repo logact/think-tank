@@ -45,16 +45,31 @@ export function isLinesIntersect(a1: Point, a2: Point, b1: Point, b2: Point): bo
 }
 
 export function isPointInLine(point: Point, lineStart: Point, lineEnd: Point, w: number) {
-    const bias = distanceFromPointToLine(point, lineStart, lineEnd)
-    const res = Math.abs(bias) <= w
-    if(res){
+    const { x: x1, y: y1 } = lineStart
+    const { x: x2, y: y2 } = lineEnd
+    const polygon = [
+        { "x": x1 - w, "y": y1 },
+        { "x": x1 + w, "y": y1 },
+        { "x": x2 + w, "y": y2 },
+        { "x": x2 - w, "y": y2 },
 
-        console.log(`(${point.x},${point.y}) distacne from line (${lineStart.x},${lineStart.y}) - (${lineEnd.x}-${lineEnd.y}) ,bias: ${bias} `);
+    ]
+
+    const res = isPointInPolygon(point, polygon)
+    if (res) {
+
+        console.log(`(${point.x},${point.y}) distacne from line (${lineStart.x},${lineStart.y}) - (${lineEnd.x}-${lineEnd.y})  `);
     }
 
     return res
 }
-
+/**
+ * could use the distance directly cause the condition of line with point with the line the distance will be 1
+ * @param point 
+ * @param lineStart 
+ * @param lineEnd 
+ * @returns 
+ */
 function distanceFromPointToLine(point: Point, lineStart: Point, lineEnd: Point): number {
     const { x: x0, y: y0 } = point;
     const { x: x1, y: y1 } = lineStart;
@@ -69,6 +84,12 @@ function distanceFromPointToLine(point: Point, lineStart: Point, lineEnd: Point)
     const numerator = Math.abs(A * x0 + B * y0 + C);
     const denominator = Math.sqrt(A ** 2 + B ** 2);
 
+    debugger
+    // Prevent division by zero for a degenerate line (both points are the same)
+    if (denominator === 0) {
+        throw new Error("Invalid line: Start and end points are the same.");
+    }
+
     return numerator / denominator;
 }
-console.log(distanceFromPointToLine({"x":169,"y":749},{"x":1050,"y":748},{"x":1100,"y":748}))
+
