@@ -44,24 +44,33 @@ export function isLinesIntersect(a1: Point, a2: Point, b1: Point, b2: Point): bo
     return t >= 0 && t <= 1 && u >= 0 && u <= 1;
 }
 
-export function isPointInLine(point: Point, lineStart: Point, lineEnd: Point, w: number) {
-    const { x: x1, y: y1 } = lineStart
-    const { x: x2, y: y2 } = lineEnd
-    const polygon = [
-        { "x": x1 - w, "y": y1 },
-        { "x": x1 + w, "y": y1 },
-        { "x": x2 + w, "y": y2 },
-        { "x": x2 - w, "y": y2 },
+function isLineClicked(
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    mouseX: number,
+    mouseY: number,
+    tolerance: number = 5
+): boolean {
+    // 1. 检查点到直线的距离
+    const distance = Math.abs((y2 - y1) * mouseX - (x2 - x1) * mouseY + x2 * y1 - y2 * x1) /
+        Math.sqrt((y2 - y1) ** 2 + (x2 - x1) ** 2);
 
-    ]
+    // 如果点到直线的距离大于容忍范围，直接返回 false
+    if (distance > tolerance) return false;
 
-    const res = isPointInPolygon(point, polygon)
-    if (res) {
+    // 2. 检查点是否在线段范围内（投影点是否在线段上）
+    const dotProduct = (mouseX - x1) * (x2 - x1) + (mouseY - y1) * (y2 - y1);
+    const squaredLength = (x2 - x1) ** 2 + (y2 - y1) ** 2;
 
-        console.log(`(${point.x},${point.y}) distacne from line (${lineStart.x},${lineStart.y}) - (${lineEnd.x}-${lineEnd.y})  `);
-    }
+    // 如果点的投影在线段范围内，则点击有效
+    return dotProduct >= 0 && dotProduct <= squaredLength;
+}
 
-    return res
+export function isPointInLine(point: Point, lineStart: Point, lineEnd: Point, w: number):boolean {
+
+    return isLineClicked(lineStart.x, lineStart.y, lineEnd.x, lineEnd.y, point.x, point.y)
 }
 /**
  * could use the distance directly cause the condition of line with point with the line the distance will be 1
