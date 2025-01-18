@@ -50,7 +50,6 @@ export class RectangeNodeElem implements INode {
 
     const { x, y } = this.position;
     const { width, height } = this.size;
-    console.log(`start darw at ${x} ${y} `);
 
     const h5Canavas = this.canavas.canavas as HTMLCanvasElement
     const ctx = h5Canavas.getContext("2d");

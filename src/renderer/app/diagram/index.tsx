@@ -191,6 +191,7 @@ export const DiagramDetail: FC<{ diagram: DiagramVO }> = (props) => {
 
         let containerElem = containerRef.current as HTMLDivElement
         const resizeObserver = new ResizeObserver((entries) => {
+            //TODO couldn't rendere wheb console open
             //TODO handle the error  https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver#observation_errors
             requestAnimationFrame(
                 () => {
@@ -199,7 +200,7 @@ export const DiagramDetail: FC<{ diagram: DiagramVO }> = (props) => {
                             console.log(`observe resize event width:${containerElem.clientWidth},heigth:${containerElem.clientWidth}`)
                             cnv.eventManager.sendEvent({
                                 name: EventName.containerResize,
-                                data: { width: containerElem.clientWidth, height: containerElem.clientWidth },
+                                data: { width: containerElem.clientWidth, height: containerElem.clientHeight },
                                 sender: "canvas"
                             })
                         }

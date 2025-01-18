@@ -28,6 +28,8 @@ class DiagramLayer implements Listenable, Drawable {
   shfitKeyPressed: boolean
   latestSelectedEdge: IEdge
 
+
+
   selectedEdge(edge: IEdge) {
     let startNode = this.id2NodeMap.get(edge.data.startNodeId)
     let endNode = this.id2NodeMap.get(edge.data.endNodeId)
@@ -137,9 +139,9 @@ class DiagramLayer implements Listenable, Drawable {
   handle(event: Event) {
     switch (event.name) {
       case EventName.containerResize:
-        this.width = event.data.width
-        this.height = event.data.height
         if (this.canvas.currentLayerId == this.id) {
+          this.width = event.data.width
+          this.height = event.data.height
           this.draw()
         }
         break;
@@ -220,7 +222,8 @@ class DiagramLayer implements Listenable, Drawable {
     this.canvas.canavas.getContext("2d").clearRect(0, 0, this.width, this.height)
   }
   draw() {
-    console.log(`${this.id} start to draw`);
+    debugger
+    console.log(`start to draw w: ${this.width} h: ${this.height}`);
 
     this.layout()
     this.clear()
@@ -232,6 +235,45 @@ class DiagramLayer implements Listenable, Drawable {
     })
     this.starNodeElement.draw()
     this.endNodeElement.draw()
+    this.openDevTool();
+    
+  }
+  openDevTool() {
+    const ctx = this.canvas.canavas.getContext("2d");
+    ctx.beginPath();
+    
+    ctx.strokeStyle = 'red'
+    for(let i = 1;i<1000;){
+      ctx.moveTo(1,i)
+      ctx.lineWidth = 1
+      ctx.strokeText(String(i),10,i,30)
+      ctx.stroke()
+
+      ctx.lineWidth = 4
+      ctx.lineTo(1,i+100)
+      i=i+100
+      ctx.stroke()
+    }
+    for(let i = 1;i<1000;){
+      ctx.moveTo(i,1)
+      ctx.lineWidth = 1
+      ctx.strokeText(String(i),i,10,30)
+      ctx.stroke()
+
+
+      ctx.lineTo(i+100,1)
+      i=i+100
+      ctx.lineWidth = 4
+      ctx.stroke()
+    }
+
+    ctx.lineWidth = 1
+    ctx.strokeText(`width:${this.width},heigth:${this.height}`,50,50,100)
+    ctx.stroke()
+    
+  
+
+    ctx.lineWidth = 1
   }
   async createNextNode() {
     if (!this.latestSelectedEdge) {
