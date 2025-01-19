@@ -216,7 +216,9 @@ class DiagramLayer implements Listenable, Drawable {
     } else {  // Scroll to pan
       this.offsetX -= event.deltaX;
       // offsetY -= event.deltaY;
+      
       this.canvas.canavas.style.cursor = 'dragging';
+      
       this.draw(1);
       
     }
@@ -309,12 +311,15 @@ class DiagramLayer implements Listenable, Drawable {
     })
   }
   transform() {
-    // this.edgeElements.forEach(e => {
 
-    //   e.position.start = multiplyVectorByMatrix(e.position.start, this.getTransformMatrix())
-    //   e.position.end = multiplyVectorByMatrix(e.position.end, this.getTransformMatrix())
+    let maxX = 0
+    this.nodeElements.forEach(n=>{
+      maxX = Math.max(maxX,n.position.x)
+    })
+    // debugger
+    this.offsetX = Math.min(this.panelEndX  - 150,this.offsetX)
+    this.offsetX = Math.max(-maxX + 150,this.offsetX)
 
-    // })
     this.nodeElements.forEach(n => {
       n.position = multiplyVectorByMatrix(n.position, this.getTransformMatrix())
     })
