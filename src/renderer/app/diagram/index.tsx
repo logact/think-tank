@@ -134,8 +134,8 @@ export const DiagramDetail: FC<{ diagram: DiagramVO }> = (props) => {
             } else {
                 if (e.key.toLocaleLowerCase() == 'tab') {
                     cnv.eventManager.sendEvent({
-                        name: EventName.tab,
                         data: { htmlEvent: e },
+                        name: EventName.tab,
                         sender: 'canvas'
                     })
                 } else if (e.key.toLocaleLowerCase() == 'w') {
@@ -218,7 +218,7 @@ export const DiagramDetail: FC<{ diagram: DiagramVO }> = (props) => {
 
     }, [diagram]);
     return (
-        <div ref={containerRef} style={{ width: '100%', height: '100%' }}>
+        <div ref={containerRef} style={{ width: '100%', height: '100%', "overflow": "auto" }}>
             <canvas ref={canvasRef} tabIndex={1}>
             </canvas>
         </div>

@@ -116,26 +116,5 @@ export default function layoutElementByDarge(props: {
     });
 
 
-    // ========================set the edge edge with the end node and start node =====================================
-    // props.edgeElmenets.forEach(e => {
-    //     // from start node 
-    //     if (e.data.startNodeId === props.startElement.data.id && e.data.endNodeId === props.endElement.data.id) {
-    //         // if the line is the line between the 2 point
-    //         e.position = connectNode(props.startElement, props.endElement)
-
-    //     } else if (e.data.startNodeId === props.startElement.data.id) {
-    //         let dargePositon = g.node(String(e.data.endNodeId))
-    //         if (dargePositon) {
-    //             e.position = connectNode(props.startElement, id2nodeElem.get(e.data.endNodeId))
-    //         }
-    //     } else if (e.data.endNodeId === props.endElement.data.id) {
-    //         let dargePositon = g.node(String(e.data.startNodeId));
-    //         if (dargePositon) {
-    //             e.position = connectNode(id2nodeElem.get(e.data.startNodeId), props.endElement)
-    //         }
-    //     }
-
-    // })
-
 
 }

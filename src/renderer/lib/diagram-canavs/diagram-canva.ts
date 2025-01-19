@@ -20,8 +20,7 @@ class DiagramLayer implements Listenable, Drawable {
   nodeElements: (INode & Drawable)[]
   edgeElements: (IEdge & Drawable)[]
   id: number
-  // selectedNodeIds: number[]
-  selectedNodeMap: Map<number, INode>
+
   id2NodeMap: Map<number, INode>
   starNodeElement: (INode & Drawable)
   endNodeElement: (INode & Drawable)
@@ -34,36 +33,21 @@ class DiagramLayer implements Listenable, Drawable {
     let startNode = this.id2NodeMap.get(edge.data.startNodeId)
     let endNode = this.id2NodeMap.get(edge.data.endNodeId)
     edge.setSelected(1)
-    startNode.setSelected(1)
-    endNode.setSelected(1)
+    this.clickNode(startNode)
+    this.clickNode(endNode)
+
+
     this.latestSelectedEdge = edge
   }
   clickNode(node: INode) {
-    this.selectedNodeMap.set(node.data.id, node)
     node.setSelected()
     node.draw()
   }
-  clearSelectedNode() {
-    this.selectedNodeMap.forEach((k, v) => {
-      k.setSelected(2)
-    })
-    this.selectedNodeMap.clear()
-  }
-  deleteSelectedNode(id: number) {
-    let node = this.selectedNodeMap.get(id)
-    if (!node) {
-      return
-    }
-    node.setSelected(1)
-    this.selectedNodeMap.delete(id)
 
-  }
   clickEdge(edge: IEdge) {
     edge.setSelected()
     if (edge.selected) {
       this.latestSelectedEdge = edge
-    } else if (edge.data.id === this.latestSelectedEdge.data.id) {
-      this.latestSelectedEdge = null
     }
     edge.draw()
   }
@@ -81,12 +65,8 @@ class DiagramLayer implements Listenable, Drawable {
     this.nodeElements = [];
     this.edgeElements = [];
     this.id2NodeMap = new Map()
-    this.selectedNodeMap = new Map()
+
     this.id = id;
-
-
-
-
     nodes.forEach(node => {
       this.nodeElements.push(this.addNode(node));
     })
@@ -107,27 +87,25 @@ class DiagramLayer implements Listenable, Drawable {
 
   }
   handleClick(event: Event) {
-    // for debug
-    // const ctx = this.canvas.canavas.getContext("2d")
-    // ctx.beginPath()
-    // ctx.fillStyle = 'green'
-    // ctx.fillRect(event.data.position.x,event.data.position.y,5,5)
-
+    if(this.starNodeElement.conflict(event.data.position)){
+      this.clickNode(this.starNodeElement)
+    }
+    if(this.endNodeElement.conflict(event.data.position)){
+      this.clickNode(this.endNodeElement)
+    }
     this.nodeElements.forEach(node => {
       if (node.conflict(event.data.position)) {
 
-        if (node.selected) {
-          this.deleteSelectedNode(node.data.id)
-        } else {
-          this.clickNode(node)
-        }
+        this.clickNode(node)
+
       }
     })
+
 
     this.edgeElements.forEach(edge => {
       if (edge.conflict(event.data.position)) {
         console.log(`${edge.data.id} is clicked`);
-        
+
         this.clickEdge(edge)
 
       }
@@ -218,14 +196,15 @@ class DiagramLayer implements Listenable, Drawable {
 
   }
   clear() {
-
     this.canvas.canavas.getContext("2d").clearRect(0, 0, this.width, this.height)
   }
-  draw() {
-    debugger
+  draw(mode?:number) {
+
     console.log(`start to draw w: ${this.width} h: ${this.height}`);
 
-    this.layout()
+    if(mode === 1){
+      this.layout()
+    }
     this.clear()
     this.nodeElements.forEach((elem) => {
       elem.draw();
@@ -236,42 +215,40 @@ class DiagramLayer implements Listenable, Drawable {
     this.starNodeElement.draw()
     this.endNodeElement.draw()
     this.openDevTool();
-    
+
   }
   openDevTool() {
     const ctx = this.canvas.canavas.getContext("2d");
     ctx.beginPath();
-    
-    ctx.strokeStyle = 'red'
-    for(let i = 1;i<1000;){
-      ctx.moveTo(1,i)
+
+    ctx.strokeStyle = 'green'
+    for (let i = 1; i < 1000;) {
+      ctx.moveTo(1, i)
       ctx.lineWidth = 1
-      ctx.strokeText(String(i),10,i,30)
+      ctx.strokeText(String(i), 10, i, 30)
       ctx.stroke()
 
       ctx.lineWidth = 4
-      ctx.lineTo(1,i+100)
-      i=i+100
+      ctx.lineTo(1, i + 100)
+      i = i + 100
       ctx.stroke()
     }
-    for(let i = 1;i<1000;){
-      ctx.moveTo(i,1)
+    for (let i = 1; i < 1000;) {
+      ctx.moveTo(i, 1)
       ctx.lineWidth = 1
-      ctx.strokeText(String(i),i,10,30)
+      ctx.strokeText(String(i), i, 10, 30)
       ctx.stroke()
-
-
-      ctx.lineTo(i+100,1)
-      i=i+100
+      ctx.lineTo(i + 100, 1)
+      i = i + 100
       ctx.lineWidth = 4
       ctx.stroke()
     }
 
     ctx.lineWidth = 1
-    ctx.strokeText(`width:${this.width},heigth:${this.height}`,50,50,100)
+    ctx.strokeText(`width:${this.width},heigth:${this.height}`, 50, 50, 100)
     ctx.stroke()
-    
-  
+
+
 
     ctx.lineWidth = 1
   }
@@ -292,15 +269,12 @@ class DiagramLayer implements Listenable, Drawable {
     }
     let startNode = this.id2NodeMap.get(this.latestSelectedEdge.data.startNodeId)
     let endNode = this.id2NodeMap.get(this.latestSelectedEdge.data.endNodeId)
+
     const nodeMkRes = await window.myapi.node.mk(newNodeVO)
     if (nodeMkRes.code !== Status.ok) {
       throw new Error(`error create new node,when create next node msg=${nodeMkRes.msg} `)
     }
     newNodeVO = nodeMkRes.data
-
-
-
-    // seprate the edge to 2 segment
 
     await window.myapi.edge.del({
       edge: {
@@ -316,7 +290,7 @@ class DiagramLayer implements Listenable, Drawable {
       startNodeId: startNode.data.id,
       endNodeId: newNodeVO.id,
       diagramId: this.diagramId,
-      type: 1,
+      type: 1,  
       "name": `edge from edge ${startNode.data.id} - ${endNode.data.id}`,
     }
     await window.myapi.edge.mk(newEdgeVO1)
@@ -341,11 +315,12 @@ class DiagramLayer implements Listenable, Drawable {
 
     this.selectedEdge(newEdgeElem2)
 
-
-    this.draw()
+    this.draw(1)
   }
   createLastNode() { }
 }
+
+
 export interface IDiagramCanvas extends Listenable {
   canavas: HTMLCanvasElement,
   width: number,
@@ -353,9 +328,6 @@ export interface IDiagramCanvas extends Listenable {
   scala: number,
 }
 export class DiagramCanavas implements IDiagramCanvas {
-
-
-
   canavas: HTMLCanvasElement;
   width: number;
   scala: number;
@@ -383,16 +355,9 @@ export class DiagramCanavas implements IDiagramCanvas {
     this.eventManager = new EventManager()
     this.layerId = 0
     this.eventManager.addObserver(this)
+
   }
   handle(event: Event) {
-    // switch (event.name) {
-    // case EventName.containerResize:
-    //   this.width = event.data.width
-    //   this.height = event.data.height
-    //   this.canavas.width = this.width
-    //   this.canavas.height = this.height
-    //   break;
-    // }
   }
   destroy() {
     return;
