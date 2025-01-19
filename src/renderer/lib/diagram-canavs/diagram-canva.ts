@@ -3,7 +3,7 @@ import { Event, EventManager, EventName, Listenable } from "./event";
 import { IEdge } from "./elements/edge-element";
 import { INode } from "./elements/node-element";
 import { createElementByType, getElementTypeByNumber } from './elements/element-factory'
-import { layoutInCenterPanel } from "./layout";
+import { connectNode, layoutInCenterPanel } from "./layout";
 import { Drawable } from "./elements/element-interface";
 import { Status } from "@common/vo/res";
 import { multiplyVectorByMatrix } from "./util";
@@ -12,12 +12,12 @@ const DEFAULT_NODE_WIDTH = 50
 const DEFAULT_NODE_HEIGT = 50
 const DEFAULT_EDGE_WIDTH = 5
 const MARGIN = 10
-const ZOOMFACTOR = 0.1;
+const ZOOMFACTOR = 0.05;
 class DiagramLayer implements Listenable, Drawable {
   name: string
   width: number
   height: number
-  scala: number
+  scale: number
   diagramId: number
   canvas: DiagramCanavas
   nodeElements: (INode & Drawable)[]
@@ -39,6 +39,7 @@ class DiagramLayer implements Listenable, Drawable {
   offsetX: number
   offsetY: number
   mosueStartX: number
+
 
 
 
@@ -72,7 +73,7 @@ class DiagramLayer implements Listenable, Drawable {
     this.name = name;
     this.width = props.canvas.width;
     this.height = props.canvas.height;
-    this.scala = props.canvas.scala;
+    this.scale = 1
     this.offsetX = 0
     this.offsetY = 0
     this.diagramId = id;
@@ -137,8 +138,8 @@ class DiagramLayer implements Listenable, Drawable {
 
   getTransformMatrix(): [number, number, number, number, number, number, number, number, number] {
     return [
-      this.scala, 0, this.offsetX,  // Scale and translation for x-axis
-      0, this.scala, this.offsetY,  // Scale and translation for y-axis
+      1, 0, this.offsetX,  // Scale and translation for x-axis
+      0, 1, this.offsetY,  // Scale and translation for y-axis
       0, 0, 1         // Homogeneous coordinate
     ];
   }
@@ -204,14 +205,20 @@ class DiagramLayer implements Listenable, Drawable {
     // just move alongsize the x axis
     if (event.ctrlKey) { // Zoom in/out on CTRL+scroll
       event.preventDefault();
-      this.scala += event.deltaY * -ZOOMFACTOR;
-      this.scala = Math.min(Math.max(0.1, this.scala), 3);  // Limit zoom range
-      this.draw(1);
+      console.log(`x=>${event.deltaX},y=>${event.deltaY}`);
+      const oldScale = this.scale;
+      this.scale += event.deltaY * -ZOOMFACTOR
+      const beta = this.scale / oldScale
+      if (this.scale < 0.7 || this.scale > 3) {
+        return
+      }
+      this.draw(1, beta);
     } else {  // Scroll to pan
       this.offsetX -= event.deltaX;
       // offsetY -= event.deltaY;
       this.canvas.canavas.style.cursor = 'dragging';
       this.draw(1);
+      
     }
   }
 
@@ -257,7 +264,7 @@ class DiagramLayer implements Listenable, Drawable {
     return createElementByType(type, nodeEle) as (IEdge & Drawable)
   }
 
-  layout() {
+  layout(scala: number = 1) {
 
     layoutInCenterPanel({
       nodeElements: this.nodeElements,
@@ -268,21 +275,17 @@ class DiagramLayer implements Listenable, Drawable {
       endElement: this.endNodeElement,
       startX: this.panelStartX,
       endX: this.panelEndX,
+      scale: scala
     })
 
   }
   clear() {
     this.canvas.canavas.getContext("2d").clearRect(0, 0, this.width, this.height)
   }
-  draw(mode?: number) {
+  draw(mode?: number, scale: number = 1) {
     requestAnimationFrame(() => {
-
-
-      // console.log(`start to draw w: ${this.width} h: ${this.height}`);
-
-      const ctx = this.canvas.canavas.getContext("2d")
       if (mode === 1) {
-        this.layout()
+        this.layout(scale)
 
         this.transform();
         // ctx.setTransform(this.scala, 0, 0, this.scala, this.offsetX, this.offsetY);
@@ -306,14 +309,17 @@ class DiagramLayer implements Listenable, Drawable {
     })
   }
   transform() {
-    this.edgeElements.forEach(e => {
+    // this.edgeElements.forEach(e => {
 
-      e.position.start = multiplyVectorByMatrix(e.position.start, this.getTransformMatrix())
-      e.position.end = multiplyVectorByMatrix(e.position.end, this.getTransformMatrix())
+    //   e.position.start = multiplyVectorByMatrix(e.position.start, this.getTransformMatrix())
+    //   e.position.end = multiplyVectorByMatrix(e.position.end, this.getTransformMatrix())
 
-    })
+    // })
     this.nodeElements.forEach(n => {
       n.position = multiplyVectorByMatrix(n.position, this.getTransformMatrix())
+    })
+    this.edgeElements.forEach(e => {
+      e.position = connectNode(this.id2NodeMap.get(e.data.startNodeId), this.id2NodeMap.get(e.data.endNodeId))
     })
   }
   isInViewport(elem: INode | IEdge): boolean {
@@ -325,7 +331,7 @@ class DiagramLayer implements Listenable, Drawable {
     } else if ('x' in elem.position && 'y' in elem.position && 'size' in elem) {
       const x = elem.position.x
       const y = elem.position.y
-      return x + elem.size.width <= this.panelEndX && x > this.panelStartX 
+      return x + elem.size.width <= this.panelEndX && x > this.panelStartX
     }
 
     return false;
@@ -358,7 +364,7 @@ class DiagramLayer implements Listenable, Drawable {
     }
 
     ctx.lineWidth = 1
-    ctx.strokeText(`width:${this.width},heigth:${this.height},offsetX:${this.offsetX},scale:${this.scala}`, 50, 50, 200)
+    ctx.strokeText(`width:${this.width},heigth:${this.height},offsetX:${this.offsetX},scale:${this.scale}`, 50, 50, 600)
     ctx.stroke()
 
 
