@@ -6,8 +6,7 @@ import { EdgeEntity } from "@main/db/entities/edge-entity";
 import { NodeEntity } from "@main/db/entities/node-entity";
 import { ipcMain } from "electron";
 import { ipcChannel } from "./contants";
-import { And, Equal, In, Not } from "typeorm";
-import res from "@common/vo/res";
+import { In, Not } from "typeorm";
 
 export function init() {
     ipcMain.handle(ipcChannel.diagram_mk, async (_, diagramVo: DiagramVO) => {
