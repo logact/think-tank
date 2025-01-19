@@ -165,6 +165,43 @@ export const DiagramDetail: FC<{ diagram: DiagramVO }> = (props) => {
                 }
             }
         })
+        cnvElem.addEventListener('wheel', (e) => {
+            cnv.eventManager.sendEvent({
+                name: EventName.wheel,
+                data: { htmlEvent: e },
+                sender: 'canvas'
+            })
+        });
+        cnvElem.addEventListener('mousemove', (e) => {
+            cnv.eventManager.sendEvent({
+                name: EventName.mousemove,
+                data: { htmlEvent: e },
+                sender: 'canvas'
+            })
+        });
+        cnvElem.addEventListener('mousedown', (e) => {
+            cnv.eventManager.sendEvent({
+                name: EventName.mousedown,
+                data: { htmlEvent: e },
+                sender: 'canvas'
+            })
+        });
+
+        cnvElem.addEventListener('mouseup', (e) => {
+            cnv.eventManager.sendEvent({
+                name: EventName.mouseup,
+                data: { htmlEvent: e },
+                sender: 'canvas'
+            })
+        });
+
+        cnvElem.addEventListener('mouseleave', (e) => {
+            cnv.eventManager.sendEvent({
+                name: EventName.mouseleave,
+                data: { htmlEvent: e },
+                sender: 'canvas'
+            })
+        });
         function getPosition(e: MouseEvent) {
             return {
                 x: e.offsetX,
@@ -191,8 +228,8 @@ export const DiagramDetail: FC<{ diagram: DiagramVO }> = (props) => {
 
         let containerElem = containerRef.current as HTMLDivElement
         const resizeObserver = new ResizeObserver((entries) => {
-            //TODO couldn't rendere wheb console open
-            //TODO handle the error  https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver#observation_errors
+            // couldn't rendere wheb console open
+            // handle the error  https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver#observation_errors
             requestAnimationFrame(
                 () => {
                     for (const entry of entries) {

@@ -102,3 +102,16 @@ function distanceFromPointToLine(point: Point, lineStart: Point, lineEnd: Point)
     return numerator / denominator;
 }
 
+export function multiplyVectorByMatrix(vector: {x:number, y:number}, matrix: [number, number, number, number, number, number, number, number, number]): {x:number, y:number}{
+    const {x, y} = vector;
+    const [a, b, tx, c, d, ty] = matrix; // Destructuring the matrix
+
+    // Matrix multiplication for 2D vector and affine transformation matrix
+    const xNew = a * x + b * y + tx;
+    const yNew = c * x + d * y + ty;
+    return {
+        "x":xNew,
+        "y":yNew
+    }
+
+}

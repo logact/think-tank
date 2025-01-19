@@ -3,13 +3,16 @@ import { Event, EventManager, EventName, Listenable } from "./event";
 import { IEdge } from "./elements/edge-element";
 import { INode } from "./elements/node-element";
 import { createElementByType, getElementTypeByNumber } from './elements/element-factory'
-import layoutElementByDarge from "./layout";
+import { layoutInCenterPanel } from "./layout";
 import { Drawable } from "./elements/element-interface";
 import { Status } from "@common/vo/res";
+import { multiplyVectorByMatrix } from "./util";
 
 const DEFAULT_NODE_WIDTH = 50
 const DEFAULT_NODE_HEIGT = 50
 const DEFAULT_EDGE_WIDTH = 5
+const MARGIN = 10
+const ZOOMFACTOR = 0.1;
 class DiagramLayer implements Listenable, Drawable {
   name: string
   width: number
@@ -26,6 +29,16 @@ class DiagramLayer implements Listenable, Drawable {
   endNodeElement: (INode & Drawable)
   shfitKeyPressed: boolean
   latestSelectedEdge: IEdge
+  isDragging: boolean
+
+  // panel info 
+  panelStartX: number
+  panelEndX: number
+  panelWidth: number
+  panelHeight: number
+  offsetX: number
+  offsetY: number
+  mosueStartX: number
 
 
 
@@ -60,11 +73,14 @@ class DiagramLayer implements Listenable, Drawable {
     this.width = props.canvas.width;
     this.height = props.canvas.height;
     this.scala = props.canvas.scala;
+    this.offsetX = 0
+    this.offsetY = 0
     this.diagramId = id;
     this.canvas = props.canvas;
     this.nodeElements = [];
     this.edgeElements = [];
     this.id2NodeMap = new Map()
+    this.mosueStartX = 0
 
     this.id = id;
     nodes.forEach(node => {
@@ -82,15 +98,20 @@ class DiagramLayer implements Listenable, Drawable {
 
     })
 
+    this.panelHeight = this.height
+    this.panelStartX = this.starNodeElement.size.width + MARGIN;
+    this.panelEndX = this.width - (this.endNodeElement.size.width + MARGIN)
+    this.panelWidth = this.panelEndX - this.panelWidth
+    this.isDragging = false
 
     this.canvas.eventManager.addObserver(this)
 
   }
   handleClick(event: Event) {
-    if(this.starNodeElement.conflict(event.data.position)){
+    if (this.starNodeElement.conflict(event.data.position)) {
       this.clickNode(this.starNodeElement)
     }
-    if(this.endNodeElement.conflict(event.data.position)){
+    if (this.endNodeElement.conflict(event.data.position)) {
       this.clickNode(this.endNodeElement)
     }
     this.nodeElements.forEach(node => {
@@ -114,7 +135,15 @@ class DiagramLayer implements Listenable, Drawable {
   }
 
 
+  getTransformMatrix(): [number, number, number, number, number, number, number, number, number] {
+    return [
+      this.scala, 0, this.offsetX,  // Scale and translation for x-axis
+      0, this.scala, this.offsetY,  // Scale and translation for y-axis
+      0, 0, 1         // Homogeneous coordinate
+    ];
+  }
   handle(event: Event) {
+
     switch (event.name) {
       case EventName.containerResize:
         if (this.canvas.currentLayerId == this.id) {
@@ -140,8 +169,52 @@ class DiagramLayer implements Listenable, Drawable {
         break;
       case EventName.shift:
         this.shfitKeyPressed = true;
+        break;
+      case EventName.mousemove:
+        // const mousemoveEvent = event.data.htmlEvent;
+        // if (this.isDragging) {
+        //   this.offsetX += mousemoveEvent.clientX - this.mosueStartX;
+        //   this.draw(1)
+        // }
+        // console.log(`mouse move ${mousemoveEvent.clientX}`);
+
+        break;
+      case EventName.mousedown:
+        // const mousedownEvent = event.data.htmlEvent;
+        // this.mosueStartX = mousedownEvent.clientX
+        // this.isDragging = true
+
+        // this.canvas.canavas.style.cursor = 'grabbing';
+        break;
+      case EventName.mouseleave:
+        // this.isDragging = false
+        // this.canvas.canavas.style.cursor = 'drag';
+        break;
+      case EventName.wheel:
+        this.moveOrScale(event);
+        console.log("wheel start");
+
+        break;
+
+
     }
   }
+  moveOrScale(cusEvent: Event) {
+    let event = cusEvent.data.htmlEvent
+    // just move alongsize the x axis
+    if (event.ctrlKey) { // Zoom in/out on CTRL+scroll
+      event.preventDefault();
+      this.scala += event.deltaY * -ZOOMFACTOR;
+      this.scala = Math.min(Math.max(0.1, this.scala), 3);  // Limit zoom range
+      this.draw(1);
+    } else {  // Scroll to pan
+      this.offsetX -= event.deltaX;
+      // offsetY -= event.deltaY;
+      this.canvas.canavas.style.cursor = 'dragging';
+      this.draw(1);
+    }
+  }
+
   addNode(node: NodeVO): (INode & Drawable) {
     let type = getElementTypeByNumber(node.type)
     let nodeEle: INode = {
@@ -185,37 +258,77 @@ class DiagramLayer implements Listenable, Drawable {
   }
 
   layout() {
-    layoutElementByDarge({
+
+    layoutInCenterPanel({
       nodeElements: this.nodeElements,
       edgeElmenets: this.edgeElements,
-      diagramheight: this.height,
+      diagramHeight: this.height,
       diagramWidth: this.width,
       startElement: this.starNodeElement,
-      endElement: this.endNodeElement
-    });
+      endElement: this.endNodeElement,
+      startX: this.panelStartX,
+      endX: this.panelEndX,
+    })
 
   }
   clear() {
     this.canvas.canavas.getContext("2d").clearRect(0, 0, this.width, this.height)
   }
-  draw(mode?:number) {
+  draw(mode?: number) {
+    requestAnimationFrame(() => {
 
-    console.log(`start to draw w: ${this.width} h: ${this.height}`);
 
-    if(mode === 1){
-      this.layout()
-    }
-    this.clear()
-    this.nodeElements.forEach((elem) => {
-      elem.draw();
-    });
-    this.edgeElements.forEach(elem => {
-      elem.draw();
+      // console.log(`start to draw w: ${this.width} h: ${this.height}`);
+
+      const ctx = this.canvas.canavas.getContext("2d")
+      if (mode === 1) {
+        this.layout()
+
+        this.transform();
+        // ctx.setTransform(this.scala, 0, 0, this.scala, this.offsetX, this.offsetY);
+      }
+      this.clear()
+      this.nodeElements.forEach((elem) => {
+        if (this.isInViewport(elem)) {
+          elem.draw();
+        }
+      });
+      this.edgeElements.forEach(elem => {
+        if (this.isInViewport(elem)) {
+          elem.draw();
+        }
+      })
+      this.starNodeElement.draw()
+      debugger
+      this.endNodeElement.draw()
+      this.openDevTool();
+
     })
-    this.starNodeElement.draw()
-    this.endNodeElement.draw()
-    this.openDevTool();
+  }
+  transform() {
+    this.edgeElements.forEach(e => {
 
+      e.position.start = multiplyVectorByMatrix(e.position.start, this.getTransformMatrix())
+      e.position.end = multiplyVectorByMatrix(e.position.end, this.getTransformMatrix())
+
+    })
+    this.nodeElements.forEach(n => {
+      n.position = multiplyVectorByMatrix(n.position, this.getTransformMatrix())
+    })
+  }
+  isInViewport(elem: INode | IEdge): boolean {
+
+    if ('start' in elem.position && 'end' in elem.position) {
+      const end = elem.position.end
+      const start = elem.position.start
+      return end.x <= this.panelEndX && start.x >= this.panelStartX
+    } else if ('x' in elem.position && 'y' in elem.position && 'size' in elem) {
+      const x = elem.position.x
+      const y = elem.position.y
+      return x + elem.size.width <= this.panelEndX && x > this.panelStartX 
+    }
+
+    return false;
   }
   openDevTool() {
     const ctx = this.canvas.canavas.getContext("2d");
@@ -245,7 +358,7 @@ class DiagramLayer implements Listenable, Drawable {
     }
 
     ctx.lineWidth = 1
-    ctx.strokeText(`width:${this.width},heigth:${this.height}`, 50, 50, 100)
+    ctx.strokeText(`width:${this.width},heigth:${this.height},offsetX:${this.offsetX},scale:${this.scala}`, 50, 50, 200)
     ctx.stroke()
 
 
@@ -290,7 +403,7 @@ class DiagramLayer implements Listenable, Drawable {
       startNodeId: startNode.data.id,
       endNodeId: newNodeVO.id,
       diagramId: this.diagramId,
-      type: 1,  
+      type: 1,
       "name": `edge from edge ${startNode.data.id} - ${endNode.data.id}`,
     }
     await window.myapi.edge.mk(newEdgeVO1)

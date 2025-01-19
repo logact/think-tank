@@ -27,7 +27,9 @@ export class EventManager {
 }
 export enum EventName {
     containerResize,
+    // sperate a edge to a node and 2 edge,forward 
     createNextNode,
+// likewise createNextNode,but it direction is inverse .
     // TODO
     createLastNode,
     // TODO
@@ -64,5 +66,10 @@ export enum EventName {
     find,
     shift,
     keyup,
+    mouseup,
+    mousemove,
+    mouseleave,
+    mousedown,
+    wheel,
 
 }
