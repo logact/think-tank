@@ -3,6 +3,7 @@ import { DiagramCanavas } from "../diagram-canva";
 import { EdgeModel } from "@common/model/diagram-model";
 import { Drawable } from "./element-interface";
 import { isPointInLine } from "../util";
+import { INode } from "./node-element";
 
 export interface IEdge {
   setSelected?: (value?: 1 | 2) => void;
@@ -14,6 +15,7 @@ export interface IEdge {
   conflict?: (position: { x: number, y: number }) => boolean
   position: { start: { x: number, y: number }, end: { x: number, y: number } }
   draw?: () => void
+  children?: INode[]
 
 }
 
@@ -63,7 +65,7 @@ export class DirectLineEdgeElem implements IEdge, Drawable {
     ctx.lineTo(end.x, end.y);
     ctx.strokeStyle = 'white'
     ctx.stroke();
-    
+
     ctx.beginPath();
     ctx.strokeStyle = this.selected ? 'red' : 'black'
     ctx.moveTo(start.x, start.y);

@@ -5,7 +5,7 @@ import { FC } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DiagramCanavas } from '@renderer/lib/diagram-canavs/diagram-canva';
 import { EventName } from '@renderer/lib/diagram-canavs/event';
-// TODO implement it using react 
+
 export const DiagramDetail: FC<{ diagram: DiagramVO }> = (props) => {
     const containerRef = React.useRef(null)
     const canvasRef = React.useRef(null)

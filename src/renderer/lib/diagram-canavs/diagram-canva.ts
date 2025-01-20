@@ -25,10 +25,13 @@ class DiagramLayer implements Listenable, Drawable {
   id: number
 
   id2NodeMap: Map<number, INode>
+  id2EdgeMap: Map<number, IEdge>;
+  startId2EdgeMap: Map<number, IEdge>
+  endId2EdgeMap: Map<number, IEdge>
   starNodeElement: (INode & Drawable)
   endNodeElement: (INode & Drawable)
   shfitKeyPressed: boolean
-  latestSelectedEdge: IEdge
+
   isDragging: boolean
 
   // panel info 
@@ -39,32 +42,14 @@ class DiagramLayer implements Listenable, Drawable {
   offsetX: number
   offsetY: number
   mosueStartX: number
+  // 
+  curSelectedElem: INode | IEdge
 
 
 
 
-  selectedEdge(edge: IEdge) {
-    let startNode = this.id2NodeMap.get(edge.data.startNodeId)
-    let endNode = this.id2NodeMap.get(edge.data.endNodeId)
-    edge.setSelected(1)
-    this.clickNode(startNode)
-    this.clickNode(endNode)
 
 
-    this.latestSelectedEdge = edge
-  }
-  clickNode(node: INode) {
-    node.setSelected()
-    node.draw()
-  }
-
-  clickEdge(edge: IEdge) {
-    edge.setSelected()
-    if (edge.selected) {
-      this.latestSelectedEdge = edge
-    }
-    edge.draw()
-  }
 
 
 
@@ -81,6 +66,9 @@ class DiagramLayer implements Listenable, Drawable {
     this.nodeElements = [];
     this.edgeElements = [];
     this.id2NodeMap = new Map()
+    this.startId2EdgeMap = new Map()
+    this.endId2EdgeMap = new Map()
+    this.id2EdgeMap = new Map()
     this.mosueStartX = 0
 
     this.id = id;
@@ -93,9 +81,6 @@ class DiagramLayer implements Listenable, Drawable {
     edges.forEach(edge => {
       const edgeElem = this.addEdge(edge)
       this.edgeElements.push(edgeElem)
-      if (edgeElem.data.startNodeId === startNode.id && edgeElem.data.endNodeId) {
-        this.selectedEdge(edgeElem)
-      }
 
     })
 
@@ -104,21 +89,23 @@ class DiagramLayer implements Listenable, Drawable {
     this.panelEndX = this.width - (this.endNodeElement.size.width + MARGIN)
     this.panelWidth = this.panelEndX - this.panelWidth
     this.isDragging = false
+    this.curSelectedElem = this.starNodeElement
+
 
     this.canvas.eventManager.addObserver(this)
 
   }
   handleClick(event: Event) {
     if (this.starNodeElement.conflict(event.data.position)) {
-      this.clickNode(this.starNodeElement)
+      this.focusElem(this.starNodeElement)
     }
     if (this.endNodeElement.conflict(event.data.position)) {
-      this.clickNode(this.endNodeElement)
+      this.focusElem(this.endNodeElement)
     }
     this.nodeElements.forEach(node => {
       if (node.conflict(event.data.position)) {
 
-        this.clickNode(node)
+        this.focusElem(node)
 
       }
     })
@@ -128,7 +115,7 @@ class DiagramLayer implements Listenable, Drawable {
       if (edge.conflict(event.data.position)) {
         console.log(`${edge.data.id} is clicked`);
 
-        this.clickEdge(edge)
+        this.focusElem(edge)
 
       }
     })
@@ -197,9 +184,124 @@ class DiagramLayer implements Listenable, Drawable {
 
         break;
 
+      case EventName.left:
+        this.handleMove(event)
+        break;
 
+      case EventName.right:
+        this.handleMove(event)
+        break;
+      case EventName.up:
+        this.handleMove(event)
+        break;
+      case EventName.down:
+        this.handleMove(event)
+        break;
     }
   }
+  /**
+   * 
+   * 1.left or right just. 
+   *  
+   *  1.1 if cur element is edge:
+   *     next is  the node whose id is curedge.endNodeId
+   *     previous is the node whose id is  curedge.startNodeId
+   *  1.2 if cur element is  node:
+   *    next is the edge whose startNode is cur node's  id 
+   *    previouse is the node whose id is cur node's id 
+   * 2. up or down:
+   *   
+   *   2.1 if cur element is node:
+   *      next is the edge whose start id order by index desc
+   *      previouse is then edge whose start id 
+
+   * 
+   * 
+   * @param event 
+   * 
+   * 
+   */
+  typeofElem(elem: INode | IEdge): "edge" | "node" {
+    let data = elem.data
+    if ("startNodeId" in data) {
+      return "edge"
+    } else {
+      return "node"
+    }
+
+  }
+  focusElem(elem: INode | IEdge) {
+    this.curSelectedElem.setSelected(2)
+    this.curSelectedElem = elem
+    this.curSelectedElem.setSelected(1)
+    this.layout()
+    let curNode: INode
+    if (this.typeofElem(elem) === "node") {
+      curNode = elem as INode
+    } else {
+      const curEdge: IEdge = elem as IEdge
+      curNode = this.id2NodeMap.get(curEdge.data.startNodeId)
+    }
+    const offsetX = curNode.position.x + (this.panelEndX - this.panelStartX - curNode.size.width) / 2
+    this.offsetX = Math.min(0, offsetX)
+    this.transform()
+    this.draw();
+
+  }
+  handleMove(event: Event) {
+    const eventName = event.name
+    const curType = this.typeofElem(this.curSelectedElem)
+    if (eventName === EventName.left || eventName === EventName.right) {
+      if (curType === 'edge') {
+        let curEdge: IEdge = this.curSelectedElem as IEdge
+
+        if (eventName === EventName.left) {
+          this.focusElem(this.id2NodeMap.get(curEdge.data.startNodeId))
+        } else if (eventName === EventName.right) {
+          this.focusElem(this.id2NodeMap.get(curEdge.data.endNodeId))
+        }
+      } else if (curType === "node") {
+        const curNode: INode = this.curSelectedElem as INode
+        if (eventName === EventName.left) {
+          if (curNode.data.id === this.starNodeElement.data.id) {
+            return
+          }
+          const elem = this.startId2EdgeMap.get(curNode.data.id)
+
+          if (elem) {
+            this.focusElem(elem)
+          }
+        } else if (eventName === EventName.right) {
+          if (curNode.data.id === this.endNodeElement.data.id) {
+            return
+          }
+          const elem = this.endId2EdgeMap.get(curNode.data.id)
+          this.focusElem(elem)
+          if (elem) {
+            this.focusElem(elem)
+          }
+
+        }
+      }
+    } else if (eventName === EventName.up || eventName === EventName.down) {
+      if (curType === 'edge') {
+        let curEdge: IEdge = this.curSelectedElem as IEdge;
+        let parentNode = this.id2NodeMap.get(curEdge.data.startNodeId)
+        let sbling = parentNode.children
+        sbling.sort((a, b) => { return this.id2EdgeMap.get(a).position.end.y - this.id2EdgeMap.get(b).position.end.y })
+        if (eventName === EventName.up) {
+          this.focusElem(this.id2EdgeMap.get(sbling[sbling.indexOf(curEdge.data.id) - 1]))
+        } else {
+          this.focusElem(this.id2EdgeMap.get(sbling[sbling.indexOf(curEdge.data.id) + 1]))
+        }
+      } else if (curType === 'node') {
+        // Don't support node now !!!!
+      }
+    }
+
+
+  }
+
   moveOrScale(cusEvent: Event) {
     let event = cusEvent.data.htmlEvent
     // just move alongsize the x axis
@@ -216,11 +318,11 @@ class DiagramLayer implements Listenable, Drawable {
     } else {  // Scroll to pan
       this.offsetX -= event.deltaX;
       // offsetY -= event.deltaY;
-      
+
       this.canvas.canavas.style.cursor = 'dragging';
-      
+
       this.draw(1);
-      
+
     }
   }
 
@@ -241,6 +343,7 @@ class DiagramLayer implements Listenable, Drawable {
     }
     const res = createElementByType(type, nodeEle) as (INode & Drawable)
     this.id2NodeMap.set(res.data.id, res)
+
     return res
 
 
@@ -263,7 +366,16 @@ class DiagramLayer implements Listenable, Drawable {
         }
       }
     }
-    return createElementByType(type, nodeEle) as (IEdge & Drawable)
+    this.id2EdgeMap.set(nodeEle.data.id, nodeEle)
+    this.startId2EdgeMap.set(nodeEle.data.startNodeId, nodeEle);
+    this.endId2EdgeMap.set(nodeEle.data.endNodeId, nodeEle)
+
+
+
+    const res = createElementByType(type, nodeEle) as (IEdge & Drawable)
+    this.id2EdgeMap.set(res.data.id, res)
+
+    return res
   }
 
   layout(scala: number = 1) {
@@ -288,10 +400,11 @@ class DiagramLayer implements Listenable, Drawable {
     requestAnimationFrame(() => {
       if (mode === 1) {
         this.layout(scale)
-
         this.transform();
-        // ctx.setTransform(this.scala, 0, 0, this.scala, this.offsetX, this.offsetY);
       }
+      this.edgeElements.forEach(e => {
+        e.position = connectNode(this.id2NodeMap.get(e.data.startNodeId), this.id2NodeMap.get(e.data.endNodeId))
+      })
       this.clear()
       this.nodeElements.forEach((elem) => {
         if (this.isInViewport(elem)) {
@@ -304,28 +417,27 @@ class DiagramLayer implements Listenable, Drawable {
         }
       })
       this.starNodeElement.draw()
-      debugger
+
       this.endNodeElement.draw()
       this.openDevTool();
 
     })
   }
+
   transform() {
 
     let maxX = 0
-    this.nodeElements.forEach(n=>{
-      maxX = Math.max(maxX,n.position.x)
+    this.nodeElements.forEach(n => {
+      maxX = Math.max(maxX, n.position.x)
     })
     // debugger
-    this.offsetX = Math.min(this.panelEndX  - 150,this.offsetX)
-    this.offsetX = Math.max(-maxX + 150,this.offsetX)
+    this.offsetX = Math.min(this.panelEndX - 150, this.offsetX)
+    this.offsetX = Math.max(-maxX + 150, this.offsetX)
 
     this.nodeElements.forEach(n => {
       n.position = multiplyVectorByMatrix(n.position, this.getTransformMatrix())
     })
-    this.edgeElements.forEach(e => {
-      e.position = connectNode(this.id2NodeMap.get(e.data.startNodeId), this.id2NodeMap.get(e.data.endNodeId))
-    })
+    
   }
   isInViewport(elem: INode | IEdge): boolean {
 
@@ -377,9 +489,16 @@ class DiagramLayer implements Listenable, Drawable {
     ctx.lineWidth = 1
   }
   async createNextNode() {
-    if (!this.latestSelectedEdge) {
+    
+    if (!this.curSelectedElem) {
       return
     }
+    if(this.typeofElem(this.curSelectedElem) === 'node'){
+      // TODO
+      alert("node not support for now ")
+      return
+    }
+    const curSelectedEdge:IEdge = this.curSelectedElem as IEdge
 
 
     let newNodeVO: NodeVO = {
@@ -391,8 +510,8 @@ class DiagramLayer implements Listenable, Drawable {
       name: "new node",
       description: ""
     }
-    let startNode = this.id2NodeMap.get(this.latestSelectedEdge.data.startNodeId)
-    let endNode = this.id2NodeMap.get(this.latestSelectedEdge.data.endNodeId)
+    let startNode = this.id2NodeMap.get(curSelectedEdge.data.startNodeId)
+    let endNode = this.id2NodeMap.get(curSelectedEdge.data.endNodeId)
 
     const nodeMkRes = await window.myapi.node.mk(newNodeVO)
     if (nodeMkRes.code !== Status.ok) {
@@ -435,11 +554,9 @@ class DiagramLayer implements Listenable, Drawable {
     this.nodeElements.push(newNodeEleme)
     this.edgeElements.push(newEdgeElem1)
     this.edgeElements.push(newEdgeElem2)
-    this.latestSelectedEdge = newEdgeElem2
 
-    this.selectedEdge(newEdgeElem2)
+    this.focusElem(newEdgeElem2)
 
-    this.draw(1)
   }
   createLastNode() { }
 }

@@ -204,7 +204,7 @@ async function getDiagramById(id: number) {
 
     }
 
-    const nodes = await nodeRepos.find({ where: { diagramId: id, "id": Not(In([startNode.id, endNode.id])) } });
+    const nodes = await nodeRepos.find({ where: { diagramId: id } });
     const edges = await edgeRepos.find({ where: { diagramId: id } });
     let diagramVO: DiagramVO = {
         ...res,

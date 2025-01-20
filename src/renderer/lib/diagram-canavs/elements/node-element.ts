@@ -2,7 +2,7 @@
 import { NodeVO } from "@common/vo/diagram-bo";
 import { DiagramCanavas } from "../diagram-canva";
 import { NodeModel } from "@common/model/diagram-model";
-import { Event, EventName, Listenable } from "../event";
+import { IEdge } from "./edge-element";
 export interface INode {
   data: NodeVO,
   canavas: DiagramCanavas,
@@ -13,6 +13,7 @@ export interface INode {
   selected?: boolean,
   setSelected?: (flag?: 1 | 2) => void
   draw?: () => void
+  children?: number[]
 }
 export class RectangeNodeElem implements INode {
   data: NodeModel;
