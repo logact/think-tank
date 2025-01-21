@@ -90,12 +90,14 @@ class DiagramLayer implements Listenable, Drawable {
     this.panelWidth = this.panelEndX - this.panelWidth
     this.isDragging = false
     this.curSelectedElem = this.starNodeElement
+    this.focusElem(this.starNodeElement)
 
 
     this.canvas.eventManager.addObserver(this)
 
   }
   handleClick(event: Event) {
+
     if (this.starNodeElement.conflict(event.data.position)) {
       this.focusElem(this.starNodeElement)
     }
@@ -103,10 +105,11 @@ class DiagramLayer implements Listenable, Drawable {
       this.focusElem(this.endNodeElement)
     }
     this.nodeElements.forEach(node => {
-      if (node.conflict(event.data.position)) {
+      if (node.data.id !== this.starNodeElement.data.id && node.data.id !== this.endNodeElement.data.id) {
+        if (node.conflict(event.data.position)) {
+          this.focusElem(node)
 
-        this.focusElem(node)
-
+        }
       }
     })
 
@@ -231,7 +234,10 @@ class DiagramLayer implements Listenable, Drawable {
 
   }
   focusElem(elem: INode | IEdge) {
-    this.curSelectedElem.setSelected(2)
+
+    if (this.curSelectedElem) {
+      this.curSelectedElem.setSelected(2)
+    }
     this.curSelectedElem = elem
     this.curSelectedElem.setSelected(1)
     this.layout()
@@ -266,7 +272,7 @@ class DiagramLayer implements Listenable, Drawable {
           if (curNode.data.id === this.starNodeElement.data.id) {
             return
           }
-          const elem = this.startId2EdgeMap.get(curNode.data.id)
+          const elem = this.endId2EdgeMap.get(curNode.data.id)
 
           if (elem) {
             this.focusElem(elem)
@@ -275,7 +281,7 @@ class DiagramLayer implements Listenable, Drawable {
           if (curNode.data.id === this.endNodeElement.data.id) {
             return
           }
-          const elem = this.endId2EdgeMap.get(curNode.data.id)
+          const elem = this.startId2EdgeMap.get(curNode.data.id)
           this.focusElem(elem)
           if (elem) {
             this.focusElem(elem)
@@ -288,6 +294,9 @@ class DiagramLayer implements Listenable, Drawable {
         let curEdge: IEdge = this.curSelectedElem as IEdge;
         let parentNode = this.id2NodeMap.get(curEdge.data.startNodeId)
         let sbling = parentNode.children
+        if (!sbling || sbling.length == 0) {
+          return
+        }
         sbling.sort((a, b) => { return this.id2EdgeMap.get(a).position.end.y - this.id2EdgeMap.get(b).position.end.y })
         if (eventName === EventName.up) {
           this.focusElem(this.id2EdgeMap.get(sbling[sbling.indexOf(curEdge.data.id) - 1]))
@@ -348,6 +357,31 @@ class DiagramLayer implements Listenable, Drawable {
 
 
   }
+  async delElem(elem: INode | IEdge) {
+    const typeOfElem = this.typeofElem(elem)
+    if (typeOfElem === 'node') {
+      let curNode: INode = elem as INode
+      let delRes = await window.myapi.node.del([curNode.data.id])
+      if (delRes.code !== Status.ok) {
+        console.log(`delete node failed id =${curNode.data.id}`);
+        return
+      }
+      this.nodeElements = this.nodeElements.filter(n => { n.data.id != curNode.data.id })
+      this.id2NodeMap.delete(curNode.data.id)
+    } else if (typeOfElem === 'edge') {
+      let curEdge: IEdge = elem as IEdge
+      let res = await window.myapi.edge.del({ ids: [curEdge.data.id] })
+      if (res.code !== Status.ok) {
+        console.log(`delete edge failed id =${curEdge.data.id}`);
+        return
+      }
+      this.edgeElements = this.edgeElements.filter(n => curEdge.data.id != n.data.id)
+      this.id2EdgeMap.delete(curEdge.data.id)
+      this.startId2EdgeMap.delete(curEdge.data.startNodeId)
+      this.endId2EdgeMap.delete(curEdge.data.endNodeId)
+    }
+
+  }
   addEdge(edge: EdgeVO): IEdge & Drawable {
     let type = getElementTypeByNumber(edge.type)
     let nodeEle: IEdge = {
@@ -366,13 +400,21 @@ class DiagramLayer implements Listenable, Drawable {
         }
       }
     }
-    this.id2EdgeMap.set(nodeEle.data.id, nodeEle)
-    this.startId2EdgeMap.set(nodeEle.data.startNodeId, nodeEle);
-    this.endId2EdgeMap.set(nodeEle.data.endNodeId, nodeEle)
-
-
-
     const res = createElementByType(type, nodeEle) as (IEdge & Drawable)
+    this.id2EdgeMap.set(nodeEle.data.id, res)
+    this.startId2EdgeMap.set(nodeEle.data.startNodeId, res);
+    this.endId2EdgeMap.set(nodeEle.data.endNodeId, res)
+    const startNode = this.id2NodeMap.get(edge.startNodeId)
+    // const endNOde = this.id2NodeMap.get(edge.endNodeId)
+    let children = startNode.children
+    if (!children) {
+      children = []
+    }
+    children.push(edge.id)
+
+
+
+
     this.id2EdgeMap.set(res.data.id, res)
 
     return res
@@ -407,15 +449,16 @@ class DiagramLayer implements Listenable, Drawable {
       })
       this.clear()
       this.nodeElements.forEach((elem) => {
-        if (this.isInViewport(elem)) {
+        if (this.isInViewport(elem) && this.starNodeElement.data.id != elem.data.id && this.endNodeElement.data.id != elem.data.id) {
           elem.draw();
         }
       });
       this.edgeElements.forEach(elem => {
-        if (this.isInViewport(elem)) {
-          elem.draw();
-        }
+        // if (this.isInViewport(elem)) {
+        elem.draw();
+        // }
       })
+
       this.starNodeElement.draw()
 
       this.endNodeElement.draw()
@@ -437,14 +480,14 @@ class DiagramLayer implements Listenable, Drawable {
     this.nodeElements.forEach(n => {
       n.position = multiplyVectorByMatrix(n.position, this.getTransformMatrix())
     })
-    
+
   }
   isInViewport(elem: INode | IEdge): boolean {
 
     if ('start' in elem.position && 'end' in elem.position) {
       const end = elem.position.end
       const start = elem.position.start
-      return end.x <= this.panelEndX && start.x >= this.panelStartX
+      return end.x <= this.panelEndX && start.x >= this.starNodeElement.size.width
     } else if ('x' in elem.position && 'y' in elem.position && 'size' in elem) {
       const x = elem.position.x
       const y = elem.position.y
@@ -489,16 +532,16 @@ class DiagramLayer implements Listenable, Drawable {
     ctx.lineWidth = 1
   }
   async createNextNode() {
-    
+
     if (!this.curSelectedElem) {
       return
     }
-    if(this.typeofElem(this.curSelectedElem) === 'node'){
+    if (this.typeofElem(this.curSelectedElem) === 'node') {
       // TODO
       alert("node not support for now ")
       return
     }
-    const curSelectedEdge:IEdge = this.curSelectedElem as IEdge
+    const curSelectedEdge: IEdge = this.curSelectedElem as IEdge
 
 
     let newNodeVO: NodeVO = {

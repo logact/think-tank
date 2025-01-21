@@ -2,7 +2,6 @@
 import { NodeVO } from "@common/vo/diagram-bo";
 import { DiagramCanavas } from "../diagram-canva";
 import { NodeModel } from "@common/model/diagram-model";
-import { IEdge } from "./edge-element";
 export interface INode {
   data: NodeVO,
   canavas: DiagramCanavas,
@@ -36,7 +35,7 @@ export class RectangeNodeElem implements INode {
     if (flag === 1) {
       this.selected = true;
     } else if (flag === 2) {
-      this.selected = true;
+      this.selected = false;
     } else {
       this.selected = !this.selected
     }
@@ -59,6 +58,10 @@ export class RectangeNodeElem implements INode {
     ctx.beginPath();
     ctx.fillStyle = this.selected ? 'red' : 'blue';
     ctx.fillRect(x, y, width, height);
+
+    const lineHeight = 40;
+
+    ctx.strokeText("id="+String(this.data.id), x, y, 100)
 
   }
 }

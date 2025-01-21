@@ -67,17 +67,20 @@ export function layoutInCenterPanel({
     });
     const id2nodeElem = new Map<number, INode>()
     nodeElements.forEach((node) => {
-        const width = node.size.width * scale
-        const height = node.size.height * scale
-        g.setNode(String(node.data.id), {
-            width: width,
-            height: height,
-        });
-        node.size = {
-            width,
-            height
+        if (node.data.id != startElement.data.id && node.data.id != endElement.data.id) {
+
+            const width = node.size.width * scale
+            const height = node.size.height * scale
+            g.setNode(String(node.data.id), {
+                width: width,
+                height: height,
+            });
+            node.size = {
+                width,
+                height
+            }
+            id2nodeElem.set(node.data.id, node)
         }
-        id2nodeElem.set(node.data.id, node)
     });
 
     edgeElmenets.forEach((edge) => {
@@ -105,11 +108,16 @@ export function layoutInCenterPanel({
     const offsetY = diagramHeight / 2 - (minY + maxY) / 2
 
     nodeElements.forEach(node => {
-        const { x, y } = g.node(String(node.data.id));
 
-        node.position = {
-            "x": x + offsetX,
-            "y": y + offsetY
+        const gPos = g.node(String(node.data.id));
+        if (gPos != null) {
+
+            const { x, y } = gPos
+
+            node.position = {
+                "x": x + offsetX,
+                "y": y + offsetY
+            }
         }
     })
 
