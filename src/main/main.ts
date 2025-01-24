@@ -12,6 +12,7 @@ import {
   REACT_DEVELOPER_TOOLS,
 
 } from 'electron-devtools-installer';
+import { initLowDbIpc } from './lowdb/ipc';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
@@ -74,6 +75,7 @@ const createWindow = (): void => {
 app.on('ready', () => {
   initdb()
   initDiagramIpc()
+  initLowDbIpc()
   createWindow()
   installExtension([ REACT_DEVELOPER_TOOLS])
         .then(([ react]) => console.log(`Added Extensions:, ${react.name}`))

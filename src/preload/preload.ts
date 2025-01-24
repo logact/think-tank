@@ -63,3 +63,4 @@ contextBridge.exposeInMainWorld('myapi', {
     edge: EdgeApi,
     invoke: ipcRenderer.invoke
 } as MyApi)
+

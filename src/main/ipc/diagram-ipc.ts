@@ -6,7 +6,6 @@ import { EdgeEntity } from "@main/db/entities/edge-entity";
 import { NodeEntity } from "@main/db/entities/node-entity";
 import { ipcMain } from "electron";
 import { ipcChannel } from "./contants";
-import { In, Not } from "typeorm";
 
 export function init() {
     ipcMain.handle(ipcChannel.diagram_mk, async (_, diagramVo: DiagramVO) => {
@@ -52,7 +51,6 @@ export function init() {
                         return Res.failed("create diagram failed")
                     }
                     let startNodeRes = await nodeRepos.save({
-
                         type: 0,
                         diagramId: 0,
                         id: 0,
@@ -126,7 +124,7 @@ export function init() {
         const node = await nodeRepos.findOne({ where: { id } });
         if (node) {
             return Res.ok(node);
-        } else {
+        } else {    
             return Res.failed(null);
         }
     });
