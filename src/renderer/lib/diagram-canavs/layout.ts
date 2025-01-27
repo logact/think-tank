@@ -52,16 +52,11 @@ export function layoutInCenterPanel({
 }) {
 
 
-    // 1.calculate the  edge node connected with start and end.
 
-    // const { nodes, ÷edges } = elements;
-    // Create a new directed graph
 
     const g = new dagre.graphlib.Graph({ directed: true });
-    // Set an object for the graph label
     g.setGraph({ rankdir: "LR", align: "UR" });
 
-    // Default to assigning a new object as a label for each new edge.
     g.setDefaultEdgeLabel(function () {
         return {};
     });
@@ -96,7 +91,6 @@ export function layoutInCenterPanel({
 
     let minY = Infinity;
     let maxY = -Infinity;
-    let offsetX = startX;
 
     g.nodes().forEach(nodeId => {
         const node = g.node(nodeId)
@@ -115,7 +109,7 @@ export function layoutInCenterPanel({
             const { x, y } = gPos
 
             node.position = {
-                "x": x + offsetX,
+                "x": x,
                 "y": y + offsetY
             }
         }

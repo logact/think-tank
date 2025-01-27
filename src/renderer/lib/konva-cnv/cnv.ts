@@ -4,7 +4,7 @@ import { Layer } from 'konva/lib/Layer';
 import { Rect } from 'konva/lib/shapes/Rect';
 
 import { IpcChannel } from '@common/IpcChannel';
-import dagre, { Edge } from "@dagrejs/dagre";
+import dagre from "@dagrejs/dagre";
 import { Arrow } from 'konva/lib/shapes/Arrow';
 import { Shape } from 'konva/lib/Shape';
 
@@ -13,7 +13,7 @@ type ElemType = "default-node" | "default-edge" | "react-node" | "directe-line-e
 
 const NODE_WIDTH = 50;
 const NODE_HEIGHT = 50;
-const MARGIN = 70;
+const MARGIN = 0;
 
 
 export class KnovaCnv {
@@ -24,8 +24,7 @@ export class KnovaCnv {
     width: number;
     heigth: number;
     diagramId: string;
-    parentLayer: Layer;
-    selectedElem: Rect | Arrow
+    selectedElem: Shape
     private generateUUID() {
         const timestamp = Date.now().toString(16); // Current timestamp in milliseconds as hexadecimal
         const random = Math.floor(Math.random() * 1e16).toString(16); // Random number as hexadecimal
@@ -48,17 +47,16 @@ export class KnovaCnv {
         this.stage.height(height)
         this.width = width
         this.heigth = height
-        this.layer.x(2*MARGIN)
-        this.layer.setSize({ width: width -  MARGIN, height: height })
-        this.parentLayer.setSize({ width: width, height: height })
-        console.log(`log the withd  w:${this.width},y:${this.heigth}`)
         this.draw()
     }
     private clickElem(node: Shape) {
         if (this.selectedElem !== node) {
             this.selectedElem = node as (Rect | Arrow)
             this.selectedElem.stroke('red')
-        } else {
+
+            this.selectedElem = node
+        } else if(this.selectedElem === node) {
+            this.selectedElem.stroke('black')
             this.selectedElem = null
         }
         this.layer.getChildren().forEach(node => {
@@ -68,18 +66,13 @@ export class KnovaCnv {
                 konvaElem.stroke('black')
             }
         })
-        this.parentLayer.getChildren().forEach(node => {
-            if (this.selectedElem !== node) {
-                let konvaElem = node as Shape
-                konvaElem.stroke('black')
-            }
-        })
+
     }
     private bindElemEvent(node: Shape) {
+
         node.on('click', () => { this.clickElem(node) })
     }
     private bindAllElemEvent() {
-
         this.layer.getChildren().forEach(n => {
             if (n instanceof Shape) {
                 this.bindElemEvent(n)
@@ -123,9 +116,10 @@ export class KnovaCnv {
                 fill: 'green',
                 stroke: 'black',
                 strokeWidth: 4,
-                draggable: true,
+
             });
             res = node
+            this.bindElemEvent(node)
         } else if (elemType === 'default-edge' || elemType === 'directe-line-edge') {
             if (!data.start) {
                 data.start = {
@@ -151,14 +145,16 @@ export class KnovaCnv {
                 points: [startX, startY, endX, endY], // Starting and ending coordinates
                 stroke: 'black', // Line color
                 fill: 'black', // Arrowhead color
-                strokeWidth: 2, // Line thickness
-                pointerLength: 3, // Length of the arrowhead
-                pointerWidth: 3, // Width of the arrowhead
+                strokeWidth: 4, // Line thickness
+                pointerLength: 5, // Length of the arrowhead
+                pointerWidth: 5, // Width of the arrowhead
             });
             res = arrow
+            this.bindElemEvent(res)
+
         }
 
-        this.bindElemEvent(res)
+
         return res
     }
     save() {
@@ -177,36 +173,26 @@ export class KnovaCnv {
             this.stage = Konva.Node.create(this.diagramInfo, this.container)
         }
     }
-    private initParentLayer() {
-        let parentLayer = this.stage.findOne('#parent_layer') as Layer
-        if (parentLayer) {
-            this.parentLayer = parentLayer
-        } else {
-            this.parentLayer = new Konva.Layer({ "id": 'parent_layer' })
-            this.stage.add(this.parentLayer)
-        }
-        if (!this.parentLayer.findOne(`#start_${this.diagramId}`)) {
-            this.parentLayer.add(this.createElem("startNode", { "id": `start_${this.diagramId}` }))
-        }
-        if (!this.parentLayer.findOne(`#end_${this.diagramId}`)) {
-            this.parentLayer.add(this.createElem("endNode", { "id": `end_${this.diagramId}` }))
-        }
 
-    }
     private initLayer() {
         let layer = this.stage.findOne('#main_layer') as Layer
         if (!layer) {
-            layer = new Konva.Layer({ id: 'main_layer' })
+            layer = new Konva.Layer({ "id": 'main_layer' })
             layer.add(this.createElem("startNode", { id: `start_${this.diagramId}` }) as Rect)
             layer.add(this.createElem("endNode", { id: `end_${this.diagramId}` }) as Rect)
             layer.add(this.createElem("default-edge", { id: `start_${this.diagramId}-end_${this.diagramId}` }) as Arrow)
         }
         this.layer = layer
         this.stage.add(layer)
+        layer.clip({
+            x: MARGIN,
+            y: 0,
+            width: this.width - 2 * MARGIN,
+            height: this.heigth
+        })
     }
     private initStage() {
         this.loadOrCreateStage()
-        this.initParentLayer()
         this.initLayer()
         this.initEvent()
     }
@@ -223,7 +209,9 @@ export class KnovaCnv {
         container.addEventListener('keydown', (e) => {
             if (e.metaKey && e.key == 'n') {
                 console.log("event trigger ")
-                this.createNextElem()
+                const elem = this.createNextElem()
+                // this.bindElemEvent(elem)
+                this.layout()
             }
             e.preventDefault();
         })
@@ -239,21 +227,12 @@ export class KnovaCnv {
         })
         this.stage.on("wheel", (e) => {
             e.evt.preventDefault()
-            let delta = e.evt.deltaX/4
-            console.log("wheel" + delta);
+            let delta = e.evt.deltaX / 4
             this.layer.move({ x: delta, y: 0 })
         })
         this.bindAllElemEvent()
     }
-    private getCurLayerByElem(elem: Rect | Arrow) {
-        let id = elem.id();
-        if (id.startsWith("start") || id.startsWith("end")) {
-            return this.parentLayer
-        } else {
-            return this.layer
-        }
 
-    }
     private createNextElem() {
         if (!this.selectedElem) {
             alert("Please select a node")
@@ -274,23 +253,14 @@ export class KnovaCnv {
             const newEdge = this.createElem("default-edge", { id: `${newRect.id()}-${endId}` }) as Arrow
             this.layer.add(newEdge, newRect)
         }
-        this.draw()
+
     }
     draw() {
         this.layout()
-        this.parentLayer.draw()
-        this.layer.draw()
-    }
-    parentLayout() {
-        const startNode = this.parentLayer.findOne(`#start_${this.diagramId}`)
-        const endNode = this.parentLayer.findOne(`#end_${this.diagramId}`)
-        startNode.x(0)
-        startNode.y(this.heigth / 2)
-        endNode.x(this.width - 54)
-        endNode.y(this.heigth / 2)
+
+
     }
     layout() {
-        this.parentLayout()
         const g = new dagre.graphlib.Graph({ directed: true });
         // Set an object for the graph label
         g.setGraph({ rankdir: "LR", align: "UR" });
