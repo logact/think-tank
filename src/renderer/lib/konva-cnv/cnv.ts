@@ -13,7 +13,7 @@ type ElemType = "default-node" | "default-edge" | "react-node" | "directe-line-e
 
 const NODE_WIDTH = 50;
 const NODE_HEIGHT = 50;
-const MARGIN = 0;
+const MARGIN = 70;
 
 
 export class KnovaCnv {
@@ -22,9 +22,10 @@ export class KnovaCnv {
     diagramInfo: any;
     container: HTMLDivElement;
     width: number;
-    heigth: number;
+    height: number;
     diagramId: string;
-    selectedElem: Shape
+    selectedElem: Shape;
+    maskLayer: Layer;
     private generateUUID() {
         const timestamp = Date.now().toString(16); // Current timestamp in milliseconds as hexadecimal
         const random = Math.floor(Math.random() * 1e16).toString(16); // Random number as hexadecimal
@@ -34,10 +35,11 @@ export class KnovaCnv {
         this.diagramInfo = diagramInfo
         this.container = container
         this.width = width;
-        this.heigth = height
+        this.height = height
         this.diagramId = diagramId;
         this.initStage()
         this.afterInitStage()
+
     }
     destroy() {
         this.stage.destroy()
@@ -46,7 +48,9 @@ export class KnovaCnv {
         this.stage.width(width)
         this.stage.height(height)
         this.width = width
-        this.heigth = height
+        this.height = height
+        this.maskLayer.removeChildren()
+        this.initMaskLayer()
         this.draw()
     }
     private clickElem(node: Shape) {
@@ -84,7 +88,7 @@ export class KnovaCnv {
             const node = new Konva.Rect({
                 id,
                 x: 0,
-                y: this.heigth / 2,
+                y: this.height / 2,
                 width: NODE_WIDTH,
                 height: NODE_HEIGHT,
                 fill: 'blue',
@@ -96,7 +100,7 @@ export class KnovaCnv {
             const node = new Konva.Rect({
                 id,
                 x: this.width - 54,
-                y: this.heigth / 2,
+                y: this.height / 2,
                 width: NODE_WIDTH,
                 height: NODE_HEIGHT,
                 fill: 'orange',
@@ -159,7 +163,7 @@ export class KnovaCnv {
             this.stage = new Konva.Stage({
                 container: this.container,   // id of container <div>
                 width: this.width,
-                height: this.heigth
+                height: this.height
             });
 
         } else {
@@ -183,11 +187,33 @@ export class KnovaCnv {
         this.loadOrCreateStage()
         this.initLayer()
         this.initEvent()
+        this.initMaskLayer()
+    }
+    private initMaskLayer() {
+        this.maskLayer = new Layer({ "id": "mask_layer" })
+        this.maskLayer.add(new Konva.Rect({
+            "x": 0,
+            "y": 0,
+            "width": MARGIN,
+            "height": this.height,
+            "fill": "white"
+        }))
+        this.maskLayer.add(new Konva.Rect({
+            "x": this.width - MARGIN,
+            "y": 0,
+            "width": MARGIN,
+            "height": this.height,
+            "fill": "white"
+        }))
+        this.stage.add(this.maskLayer)
+        this.maskLayer.draw()
+    }
+    private refreshMask() {
+        this.maskLayer.draw()
     }
     private afterInitStage() {
         // this.selectedElem = this.layer.findOne(`#start_${this.diagramId}`) as Rect
         const selectEdge = this.layer.findOne(`#start_${this.diagramId}-end_${this.diagramId}`) as Arrow
-
         this.clickElem(selectEdge)
     }
     private initEvent() {
@@ -196,9 +222,8 @@ export class KnovaCnv {
         container.focus();
         container.addEventListener('keydown', (e) => {
             if (e.metaKey && e.key == 'n') {
-                console.log("event trigger ")
                 this.createNextElem()
-                this.layout()
+                this.draw()
             }
             e.preventDefault();
         })
@@ -209,23 +234,23 @@ export class KnovaCnv {
             e.preventDefault();
         })
         container.addEventListener('keydown', (e) => {
-
             e.preventDefault();
         })
         this.stage.on("wheel", (e) => {
             e.evt.preventDefault()
             let delta = e.evt.deltaX / 4
             this.layer.move({ x: delta, y: 0 })
+            this.refreshMask()
         })
         this.bindAllElemEvent()
     }
 
     private createNextElem() {
+
         if (!this.selectedElem) {
             alert("Please select a node")
             return
         }
-
         const elemType = this.selectedElem.getClassName();
         if (elemType === 'Rect') {
             const newEdge = this.createElem("default-edge", { id: `${this.selectedElem.id()}-end_${this.diagramId}` }) as Arrow
@@ -247,13 +272,12 @@ export class KnovaCnv {
     }
     draw() {
         this.layout()
-
-
+        this.maskLayer.draw()
     }
     layout() {
         const g = new dagre.graphlib.Graph({ directed: true });
         // Set an object for the graph label
-        g.setGraph({ rankdir: "LR", align: "DR" ,"ranker":"longest-path","acyclicer":"greedy"});
+        g.setGraph({ rankdir: "LR", align: "DR", "ranker": "longest-path", "acyclicer": "greedy" });
         // Default to assigning a new object as a label for each new edge.
         g.setDefaultEdgeLabel(function () {
             return {};
@@ -278,7 +302,6 @@ export class KnovaCnv {
             let startNodeId = ids[0]
             let endNodeId = ids[1]
             g.setEdge(startNodeId, endNodeId)
-
         })
         dagre.layout(g);
         let minY = Infinity;
@@ -288,7 +311,7 @@ export class KnovaCnv {
             minY = Math.min(node.y, minY)
             maxY = Math.max(node.y, maxY)
         })
-        let offsetY = (this.heigth) / 2 - (maxY - minY) / 2
+        let offsetY = (this.height) / 2 - (maxY - minY) / 2
         let offsetX = MARGIN
         g.nodes().forEach(nodeId => {
             let nodeElem = this.layer.findOne("#" + nodeId)
