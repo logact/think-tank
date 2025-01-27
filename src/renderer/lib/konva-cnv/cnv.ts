@@ -50,26 +50,24 @@ export class KnovaCnv {
         this.draw()
     }
     private clickElem(node: Shape) {
-        if (this.selectedElem !== node) {
+
+        if (this.selectedElem?.id() !== node?.id()) {
             this.selectedElem = node as (Rect | Arrow)
             this.selectedElem.stroke('red')
-
-            this.selectedElem = node
-        } else if(this.selectedElem === node) {
+        } else if (this.selectedElem && this.selectedElem === node) {
             this.selectedElem.stroke('black')
             this.selectedElem = null
         }
-        this.layer.getChildren().forEach(node => {
-
-            if (this.selectedElem !== node) {
-                let konvaElem = node as Shape
+        this.layer.getChildren().forEach(n => {
+            let nId = n?.id()
+            if (n && this.selectedElem?.id() !== nId) {
+                let konvaElem = n as Shape
                 konvaElem.stroke('black')
             }
         })
 
     }
     private bindElemEvent(node: Shape) {
-
         node.on('click', () => { this.clickElem(node) })
     }
     private bindAllElemEvent() {
@@ -119,7 +117,6 @@ export class KnovaCnv {
 
             });
             res = node
-            this.bindElemEvent(node)
         } else if (elemType === 'default-edge' || elemType === 'directe-line-edge') {
             if (!data.start) {
                 data.start = {
@@ -145,21 +142,17 @@ export class KnovaCnv {
                 points: [startX, startY, endX, endY], // Starting and ending coordinates
                 stroke: 'black', // Line color
                 fill: 'black', // Arrowhead color
-                strokeWidth: 4, // Line thickness
-                pointerLength: 5, // Length of the arrowhead
-                pointerWidth: 5, // Width of the arrowhead
+                strokeWidth: 3, // Line thickness
+                pointerLength: 3, // Length of the arrowhead
+                pointerWidth: 3, // Width of the arrowhead
+                listening: true
             });
             res = arrow
-            this.bindElemEvent(res)
-
         }
-
-
         return res
     }
     save() {
         window.myapi.invoke(IpcChannel.SaveDiagram, { "id": this.diagramId, "data": this.stage.toJSON() })
-        console.log("saved");
     }
     private loadOrCreateStage() {
         if (!this.diagramInfo || this.diagramInfo === "{}") {
@@ -184,12 +177,7 @@ export class KnovaCnv {
         }
         this.layer = layer
         this.stage.add(layer)
-        layer.clip({
-            x: MARGIN,
-            y: 0,
-            width: this.width - 2 * MARGIN,
-            height: this.heigth
-        })
+
     }
     private initStage() {
         this.loadOrCreateStage()
@@ -209,8 +197,7 @@ export class KnovaCnv {
         container.addEventListener('keydown', (e) => {
             if (e.metaKey && e.key == 'n') {
                 console.log("event trigger ")
-                const elem = this.createNextElem()
-                // this.bindElemEvent(elem)
+                this.createNextElem()
                 this.layout()
             }
             e.preventDefault();
@@ -242,6 +229,7 @@ export class KnovaCnv {
         const elemType = this.selectedElem.getClassName();
         if (elemType === 'Rect') {
             const newEdge = this.createElem("default-edge", { id: `${this.selectedElem.id()}-end_${this.diagramId}` }) as Arrow
+            this.bindElemEvent(newEdge)
             this.layer.add(newEdge)
             this.selectedElem = newEdge
         } else if (elemType === 'Arrow') {
@@ -251,6 +239,8 @@ export class KnovaCnv {
             let [startId, endId] = curArrow.id().split('-')
             curArrow.id(`${startId}-${newRect.id()}`)
             const newEdge = this.createElem("default-edge", { id: `${newRect.id()}-${endId}` }) as Arrow
+            this.bindElemEvent(newRect)
+            this.bindElemEvent(newEdge)
             this.layer.add(newEdge, newRect)
         }
 
@@ -263,7 +253,7 @@ export class KnovaCnv {
     layout() {
         const g = new dagre.graphlib.Graph({ directed: true });
         // Set an object for the graph label
-        g.setGraph({ rankdir: "LR", align: "UR" });
+        g.setGraph({ rankdir: "LR", align: "DR" ,"ranker":"longest-path","acyclicer":"greedy"});
         // Default to assigning a new object as a label for each new edge.
         g.setDefaultEdgeLabel(function () {
             return {};

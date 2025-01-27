@@ -473,6 +473,7 @@ class DiagramLayer implements Listenable, Drawable {
     this.nodeElements.forEach(n => {
       maxX = Math.max(maxX, n.position.x)
     })
+    // debugger
     this.offsetX = Math.min(this.panelEndX - 150, this.offsetX)
     this.offsetX = Math.max(-maxX + 150, this.offsetX)
 
