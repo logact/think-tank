@@ -1,5 +1,4 @@
 import { DiagramVO } from '@common/vo/diagram-bo';
-import { Status } from '@common/vo/res';
 import * as React from 'react';
 import { FC } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -10,7 +9,7 @@ export const DiagramDetail: FC<{ diagramId: string, diagram: DiagramVO }> = ({ d
     const containerRef = React.useRef(null)
     const canvasRef = React.useRef(null)
 
-    debugger
+
     function initCnv() {
         if (!canvasRef.current) {
             return;
@@ -31,9 +30,8 @@ export const DiagramDetail: FC<{ diagramId: string, diagram: DiagramVO }> = ({ d
     }
 
     React.useEffect(() => {
-        if (!diagram) {
-            return
-        }
+
+
         let cnv = initCnv();
         cnv.draw()
         let containerElem = containerRef.current as HTMLDivElement
@@ -57,7 +55,8 @@ export const DiagramDetail: FC<{ diagramId: string, diagram: DiagramVO }> = ({ d
             resizeObserver.disconnect()
         };
 
-    }, [diagram]);
+    }, [diagramId, diagram]);
+
     return (
         <div ref={containerRef} style={{ width: '100%', height: '100%', "overflow": "auto" }}>
             <canvas ref={canvasRef} tabIndex={1}>
@@ -77,14 +76,10 @@ function generateUUID() {
     return `${timestamp}-${random}`;
 }
 export const Diagram: FC<{ paramId?: string }> = ({ paramId }) => {
-    debugger
     let { id } = useParams();
     const navigate = useNavigate();
-    const [diagram, setDiagram] = React.useState();
-    const [diagramId, setDiagramId] = React.useState<string>("");
+    const [diagramInfo, setDiagramInfo] = React.useState<{ "id": string, "data": any }>({ "id": "", "data": {} });
     async function fetchData() {
-
-
         if (paramId) {
             id = paramId
         }
@@ -93,9 +88,7 @@ export const Diagram: FC<{ paramId?: string }> = ({ paramId }) => {
         }
         const data = await getDiagramById(id)
 
-        setDiagram(data)
-        setDiagramId(id)
-
+        setDiagramInfo({ "data": data, id: id })
 
     }
     React.useEffect(() => {
@@ -106,9 +99,11 @@ export const Diagram: FC<{ paramId?: string }> = ({ paramId }) => {
         <>
             <button style={{ "display": "block" }} onClick={() => {
                 navigate("/");
-            }}>back, now {diagramId}</button>
+            }}>back, now {diagramInfo.id}</button>
+            {(diagramInfo.id && diagramInfo.data!==null) &&
+                <DiagramDetail diagram={diagramInfo.data} diagramId={diagramInfo.id} />
+            }
 
-            <DiagramDetail diagram={diagram} diagramId={diagramId} />
         </>
     )
 }

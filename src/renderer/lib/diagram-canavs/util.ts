@@ -93,7 +93,6 @@ function distanceFromPointToLine(point: Point, lineStart: Point, lineEnd: Point)
     const numerator = Math.abs(A * x0 + B * y0 + C);
     const denominator = Math.sqrt(A ** 2 + B ** 2);
 
-    debugger
     // Prevent division by zero for a degenerate line (both points are the same)
     if (denominator === 0) {
         throw new Error("Invalid line: Start and end points are the same.");

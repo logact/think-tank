@@ -1,0 +1,149 @@
+{
+    "attrs": {
+        "width": 800,
+        "height": 245
+    },
+    "className": "Stage",
+    "children": [
+        {
+            "attrs": {
+                "id": "parent_layer"
+            },
+            "className": "Layer",
+            "children": [
+                {
+                    "attrs": {
+                        "id": "start_root",
+                        "y": 122.5,
+                        "width": 50,
+                        "height": 50,
+                        "fill": "blue",
+                        "stroke": "black",
+                        "strokeWidth": 4
+                    },
+                    "className": "Rect"
+                },
+                {
+                    "attrs": {
+                        "id": "end_root",
+                        "x": 746,
+                        "y": 122.5,
+                        "width": 50,
+                        "height": 50,
+                        "fill": "orange",
+                        "stroke": "black",
+                        "strokeWidth": 4
+                    },
+                    "className": "Rect"
+                }
+            ]
+        },
+        {
+            "attrs": {
+                "id": "main_layer"
+            },
+            "className": "Layer",
+            "children": [
+                {
+                    "attrs": {
+                        "id": "start_root",
+                        "x": 95,
+                        "y": 147.5,
+                        "width": 50,
+                        "height": 50,
+                        "fill": "blue",
+                        "stroke": "black",
+                        "strokeWidth": 4
+                    },
+                    "className": "Rect"
+                },
+                {
+                    "attrs": {
+                        "id": "end_root",
+                        "x": 395,
+                        "y": 147.5,
+                        "width": 50,
+                        "height": 50,
+                        "fill": "orange",
+                        "stroke": "black",
+                        "strokeWidth": 4
+                    },
+                    "className": "Rect"
+                },
+                {
+                    "attrs": {
+                        "id": "start_root-194a4e707a61b702d86c34717",
+                        "points": [
+                            145,
+                            172.5,
+                            195,
+                            172.5
+                        ],
+                        "stroke": "red",
+                        "fill": "black",
+                        "strokeWidth": 4
+                    },
+                    "className": "Arrow"
+                },
+                {
+                    "attrs": {
+                        "id": "194a4e703df1fe5f3795023e8-end_root",
+                        "points": [
+                            345,
+                            172.5,
+                            395,
+                            172.5
+                        ],
+                        "stroke": "black",
+                        "fill": "black",
+                        "strokeWidth": 4
+                    },
+                    "className": "Arrow"
+                },
+                {
+                    "attrs": {
+                        "id": "194a4e703df1fe5f3795023e8",
+                        "x": 295,
+                        "y": 147.5,
+                        "width": 50,
+                        "height": 50,
+                        "fill": "green",
+                        "stroke": "black",
+                        "strokeWidth": 4,
+                        "draggable": true
+                    },
+                    "className": "Rect"
+                },
+                {
+                    "attrs": {
+                        "id": "194a4e707a61b702d86c34717-194a4e703df1fe5f3795023e8",
+                        "points": [
+                            245,
+                            172.5,
+                            295,
+                            172.5
+                        ],
+                        "stroke": "black",
+                        "fill": "black",
+                        "strokeWidth": 4
+                    },
+                    "className": "Arrow"
+                },
+                {
+                    "attrs": {
+                        "id": "194a4e707a61b702d86c34717",
+                        "x": 195,
+                        "y": 147.5,
+                        "width": 50,
+                        "height": 50,
+                        "fill": "green",
+                        "stroke": "black",
+                        "strokeWidth": 4,
+                        "draggable": true
+                    },
+                    "className": "Rect"
+                }
+            ]
+        }
+    ]
+}

@@ -4,12 +4,16 @@ import { Layer } from 'konva/lib/Layer';
 import { Rect } from 'konva/lib/shapes/Rect';
 
 import { IpcChannel } from '@common/IpcChannel';
-import dagre from "@dagrejs/dagre";
+import dagre, { Edge } from "@dagrejs/dagre";
+import { Arrow } from 'konva/lib/shapes/Arrow';
+import { Shape } from 'konva/lib/Shape';
 
 
 type ElemType = "default-node" | "default-edge" | "react-node" | "directe-line-edge" | "startNode" | "endNode"
 
-
+const NODE_WIDTH = 50;
+const NODE_HEIGHT = 50;
+const MARGIN = 70;
 
 
 export class KnovaCnv {
@@ -21,182 +25,282 @@ export class KnovaCnv {
     heigth: number;
     diagramId: string;
     parentLayer: Layer;
-
+    selectedElem: Rect | Arrow
+    private generateUUID() {
+        const timestamp = Date.now().toString(16); // Current timestamp in milliseconds as hexadecimal
+        const random = Math.floor(Math.random() * 1e16).toString(16); // Random number as hexadecimal
+        return `${timestamp}-${random}`.replace("-", "");
+    }
     constructor({ container, width, height, diagramInfo, diagramId }: { container: HTMLDivElement, width: number, height: number, diagramInfo: any, diagramId: string }) {
-        // first we need to create a stage
-        this.stage = new Konva.Stage({
-            container,   // id of container <div>
-            width,
-            height
-        });
         this.diagramInfo = diagramInfo
         this.container = container
         this.width = width;
         this.heigth = height
         this.diagramId = diagramId;
         this.initStage()
+        this.afterInitStage()
     }
     destroy() {
-
+        this.stage.destroy()
     }
-
     resize({ width, height }: { width: number, height: number }) {
         this.stage.width(width)
         this.stage.height(height)
         this.width = width
         this.heigth = height
-        console.log(`log the position x:${this.width},y:${this.heigth}`)
-
+        this.layer.x(2*MARGIN)
+        this.layer.setSize({ width: width -  MARGIN, height: height })
+        this.parentLayer.setSize({ width: width, height: height })
+        console.log(`log the withd  w:${this.width},y:${this.heigth}`)
+        this.draw()
     }
+    private clickElem(node: Shape) {
+        if (this.selectedElem !== node) {
+            this.selectedElem = node as (Rect | Arrow)
+            this.selectedElem.stroke('red')
+        } else {
+            this.selectedElem = null
+        }
+        this.layer.getChildren().forEach(node => {
 
-    createElem(elemType: ElemType, data?: any) {
+            if (this.selectedElem !== node) {
+                let konvaElem = node as Shape
+                konvaElem.stroke('black')
+            }
+        })
+        this.parentLayer.getChildren().forEach(node => {
+            if (this.selectedElem !== node) {
+                let konvaElem = node as Shape
+                konvaElem.stroke('black')
+            }
+        })
+    }
+    private bindElemEvent(node: Shape) {
+        node.on('click', () => { this.clickElem(node) })
+    }
+    private bindAllElemEvent() {
 
+        this.layer.getChildren().forEach(n => {
+            if (n instanceof Shape) {
+                this.bindElemEvent(n)
+            }
+        })
+    }
+    private createElem(elemType: ElemType, data?: any) {
+        let res = null
+        let id = data?.id || this.generateUUID()
         if (elemType == 'startNode') {
-
-
             const node = new Konva.Rect({
+                id,
                 x: 0,
                 y: this.heigth / 2,
-                width: 50,
-                height: 50,
-                fill: 'green',
+                width: NODE_WIDTH,
+                height: NODE_HEIGHT,
+                fill: 'blue',
                 stroke: 'black',
                 strokeWidth: 4,
-                draggable: true,
             });
-            return node
-
+            res = node
         } else if (elemType == 'endNode') {
-
-
             const node = new Konva.Rect({
-                x: this.width,
+                id,
+                x: this.width - 54,
                 y: this.heigth / 2,
-                width: 50,
-                height: 50,
-                fill: 'green',
+                width: NODE_WIDTH,
+                height: NODE_HEIGHT,
+                fill: 'orange',
                 stroke: 'black',
                 strokeWidth: 4,
-                draggable: true,
             });
-            return node
-
-
+            res = node
         } else if (elemType == 'default-node' || elemType == 'react-node') {
-
             const node = new Konva.Rect({
+                id,
                 x: 0,
                 y: 0,
-                width: 50,
-                height: 50,
+                width: NODE_WIDTH,
+                height: NODE_HEIGHT,
                 fill: 'green',
                 stroke: 'black',
                 strokeWidth: 4,
                 draggable: true,
             });
-            return node
+            res = node
         } else if (elemType === 'default-edge' || elemType === 'directe-line-edge') {
-            const { x: startX, y: startY } = data.startPosition
-            const { x: endX, y: endY } = data.endPosition
+            if (!data.start) {
+                data.start = {
+                    x: 0,
+                    y: 0
+                }
+            }
+            if (!data.end) {
+                data.end = {
+                    x: 0,
+                    y: 0
+                }
+            }
+            const { x: startX, y: startY } = data.start
+            const { x: endX, y: endY } = data.end
+            id = data.id
+            if (!id) {
+                alert("Please provide the id for the edge")
+                return
+            }
             const arrow = new Konva.Arrow({
+                id,
                 points: [startX, startY, endX, endY], // Starting and ending coordinates
                 stroke: 'black', // Line color
                 fill: 'black', // Arrowhead color
-                strokeWidth: 4, // Line thickness
-                pointerLength: 10, // Length of the arrowhead
-                pointerWidth: 10, // Width of the arrowhead
+                strokeWidth: 2, // Line thickness
+                pointerLength: 3, // Length of the arrowhead
+                pointerWidth: 3, // Width of the arrowhead
             });
-            return arrow;
+            res = arrow
         }
 
-
+        this.bindElemEvent(res)
+        return res
     }
     save() {
         window.myapi.invoke(IpcChannel.SaveDiagram, { "id": this.diagramId, "data": this.stage.toJSON() })
+        console.log("saved");
     }
-
-    initStage() {
+    private loadOrCreateStage() {
         if (!this.diagramInfo || this.diagramInfo === "{}") {
             this.stage = new Konva.Stage({
                 container: this.container,   // id of container <div>
                 width: this.width,
                 height: this.heigth
             });
-            var layer = new Konva.Layer();
 
-            this.stage.add(layer)
-            layer.add(this.createElem("default-node") as Rect)
         } else {
             this.stage = Konva.Node.create(this.diagramInfo, this.container)
         }
-
-        const container = this.stage.container();
-
-        // make it focusable
-        container.tabIndex = 1;
-        // focus it
-        // also stage will be in focus on its click
-        container.focus();
-
-        this.layer = this.stage.getLayers()[0]
-        if (this.stage.getLayers().length > 1) {
-            this.parentLayer = this.stage.getLayers()[1]
+    }
+    private initParentLayer() {
+        let parentLayer = this.stage.findOne('#parent_layer') as Layer
+        if (parentLayer) {
+            this.parentLayer = parentLayer
         } else {
-            this.parentLayer = new Konva.Layer()
+            this.parentLayer = new Konva.Layer({ "id": 'parent_layer' })
             this.stage.add(this.parentLayer)
-
         }
-        this.parentLayer.add(this.createElem("startNode"))
-        this.parentLayer.add(this.createElem("endNode"))
+        if (!this.parentLayer.findOne(`#start_${this.diagramId}`)) {
+            this.parentLayer.add(this.createElem("startNode", { "id": `start_${this.diagramId}` }))
+        }
+        if (!this.parentLayer.findOne(`#end_${this.diagramId}`)) {
+            this.parentLayer.add(this.createElem("endNode", { "id": `end_${this.diagramId}` }))
+        }
+
+    }
+    private initLayer() {
+        let layer = this.stage.findOne('#main_layer') as Layer
+        if (!layer) {
+            layer = new Konva.Layer({ id: 'main_layer' })
+            layer.add(this.createElem("startNode", { id: `start_${this.diagramId}` }) as Rect)
+            layer.add(this.createElem("endNode", { id: `end_${this.diagramId}` }) as Rect)
+            layer.add(this.createElem("default-edge", { id: `start_${this.diagramId}-end_${this.diagramId}` }) as Arrow)
+        }
+        this.layer = layer
+        this.stage.add(layer)
+    }
+    private initStage() {
+        this.loadOrCreateStage()
+        this.initParentLayer()
+        this.initLayer()
         this.initEvent()
     }
-    initEvent() {
-        const container = this.stage.container()
+    private afterInitStage() {
+        // this.selectedElem = this.layer.findOne(`#start_${this.diagramId}`) as Rect
+        const selectEdge = this.layer.findOne(`#start_${this.diagramId}-end_${this.diagramId}`) as Arrow
+
+        this.clickElem(selectEdge)
+    }
+    private initEvent() {
+        const container = this.stage.container();
+        container.tabIndex = 1
+        container.focus();
         container.addEventListener('keydown', (e) => {
             if (e.metaKey && e.key == 'n') {
-                this.layer.add(this.createElem("default-node") as Rect)
-                debugger
-                this.save()
+                console.log("event trigger ")
+                this.createNextElem()
             }
             e.preventDefault();
-        });
+        })
         container.addEventListener('keydown', (e) => {
             if (e.metaKey && e.key == 's') {
-
                 this.save()
             }
             e.preventDefault();
         })
+        container.addEventListener('keydown', (e) => {
 
+            e.preventDefault();
+        })
+        this.stage.on("wheel", (e) => {
+            e.evt.preventDefault()
+            let delta = e.evt.deltaX/4
+            console.log("wheel" + delta);
+            this.layer.move({ x: delta, y: 0 })
+        })
+        this.bindAllElemEvent()
+    }
+    private getCurLayerByElem(elem: Rect | Arrow) {
+        let id = elem.id();
+        if (id.startsWith("start") || id.startsWith("end")) {
+            return this.parentLayer
+        } else {
+            return this.layer
+        }
+
+    }
+    private createNextElem() {
+        if (!this.selectedElem) {
+            alert("Please select a node")
+            return
+        }
+
+        const elemType = this.selectedElem.getClassName();
+        if (elemType === 'Rect') {
+            const newEdge = this.createElem("default-edge", { id: `${this.selectedElem.id()}-end_${this.diagramId}` }) as Arrow
+            this.layer.add(newEdge)
+            this.selectedElem = newEdge
+        } else if (elemType === 'Arrow') {
+            // seperate the edge to two edges and create a new node
+            const curArrow = this.selectedElem as Arrow
+            const newRect = this.createElem("default-node") as Rect
+            let [startId, endId] = curArrow.id().split('-')
+            curArrow.id(`${startId}-${newRect.id()}`)
+            const newEdge = this.createElem("default-edge", { id: `${newRect.id()}-${endId}` }) as Arrow
+            this.layer.add(newEdge, newRect)
+        }
+        this.draw()
     }
     draw() {
         this.layout()
         this.parentLayer.draw()
         this.layer.draw()
-
+    }
+    parentLayout() {
+        const startNode = this.parentLayer.findOne(`#start_${this.diagramId}`)
+        const endNode = this.parentLayer.findOne(`#end_${this.diagramId}`)
+        startNode.x(0)
+        startNode.y(this.heigth / 2)
+        endNode.x(this.width - 54)
+        endNode.y(this.heigth / 2)
     }
     layout() {
-
-
-
-        // 1.calculate the  edge node connected with start and end.
-
-        // const { nodes, ÷edges } = elements;
-        // Create a new directed graph
-
+        this.parentLayout()
         const g = new dagre.graphlib.Graph({ directed: true });
         // Set an object for the graph label
         g.setGraph({ rankdir: "LR", align: "UR" });
-
         // Default to assigning a new object as a label for each new edge.
         g.setDefaultEdgeLabel(function () {
             return {};
         });
 
         const allNodes = this.layer.find('Rect');
-        // TODO add the edge to the diagramF
-        const allEdges = this.layer.find('edge');
-
+        const allEdges = this.layer.find('Arrow');
 
         allNodes.forEach(node => {
             let rectNode = node as Rect
@@ -208,81 +312,61 @@ export class KnovaCnv {
                 height
             })
         })
+
         allEdges.forEach(edge => {
             let ids = edge.id().split('-')
             let startNodeId = ids[0]
             let endNodeId = ids[1]
             g.setEdge(startNodeId, endNodeId)
+
         })
-
-
-
-        edgeElmenets.forEach((edge) => {
-            // filter the edge from the start node and edge to end node
-            if (edge.data.startNodeId !== startElement.data.id && edge.data.endNodeId !== endElement.data.id) {
-                const { startNodeId, endNodeId } = edge.data;
-                g.setEdge(String(startNodeId), String(endNodeId));
-            }
-
-        });
-
         dagre.layout(g);
-
         let minY = Infinity;
         let maxY = -Infinity;
-        let offsetX = startX;
-
         g.nodes().forEach(nodeId => {
             const node = g.node(nodeId)
             minY = Math.min(node.y, minY)
             maxY = Math.max(node.y, maxY)
-
-
         })
-        const offsetY = diagramHeight / 2 - (minY + maxY) / 2
-
-        nodeElements.forEach(node => {
-
-            const gPos = g.node(String(node.data.id));
-            if (gPos != null) {
-
-                const { x, y } = gPos
-
-                node.position = {
-                    "x": x + offsetX,
-                    "y": y + offsetY
-                }
-            }
+        let offsetY = (this.heigth) / 2 - (maxY - minY) / 2
+        let offsetX = MARGIN
+        g.nodes().forEach(nodeId => {
+            let nodeElem = this.layer.findOne("#" + nodeId)
+            let { x, y } = g.node(nodeId)
+            nodeElem.x(x + offsetX)
+            nodeElem.y(y + offsetY)
+        });
+        g.edges().forEach(edge => {
+            this.connectNode(edge.v, edge.w)
         })
-
-
-
-        edgeElmenets.forEach(edge => {
-            const postion = connectNode(id2nodeElem.get(edge.data.startNodeId), id2nodeElem.get(edge.data.endNodeId))
-            if (postion) {
-                edge.position = postion
-            }
-
-        })
-
-        startElement.position = {
-            "x": 0,
-            "y": diagramHeight / 2 - startElement.size.height / 2
-        }
-
-
-
-        endElement.position = {
-            "x": diagramWidth - endElement.size.width,
-            "y": diagramHeight / 2 - endElement.size.height / 2
-
-
-        }
-
-
-
     }
+    private connectNode(nodeId1: string, nodeId2: string) {
+        let node1 = this.layer.findOne(`#${nodeId1}`);
+        let node2 = this.layer.findOne(`#${nodeId2}`);
 
+        if (!node1 || !node2) {
+            return;
+        }
+        let x1 = node1.x();
+        let y1 = node1.y();
+        let x2 = node2.x();
+        let y2 = node2.y();
+        let w1 = node1.width();
+        let h1 = node1.height();
+        let w2 = node2.width();
+        let h2 = node2.height();
+        const start = {
+            x: x1 + w1,
+            y: y1 + h1 / 2
+        }
+        const end = {
+            x: x2,
+            y: y2 + h2 / 2
+        }
+        let edge: Arrow
+        edge = this.layer.findOne(`#${nodeId1}-${nodeId2}`)
+        edge.points([start.x, start.y, end.x, end.y])
+    }
 }
 
 
