@@ -1,27 +1,14 @@
-// import { Stage } from 'konva/lib/Stage';
-// import { Layer } from 'konva/lib/Layer';
-// import { Rect } from 'konva/lib/shapes/Rect';
-
+import Konva from 'konva';
 import { IpcChannel } from '@common/IpcChannel';
 import dagre from "@dagrejs/dagre";
 import { Group } from 'konva/lib/Group';
-
 import { Layer } from 'konva/lib/Layer';
 import { Shape, ShapeConfig } from 'konva/lib/Shape';
 import { Circle } from 'konva/lib/shapes/Circle';
 import { Line } from 'konva/lib/shapes/Line';
 import { Rect } from 'konva/lib/shapes/Rect';
 import { Stage } from 'konva/lib/Stage';
-// import { Shape, ShapeConfig } from 'konva/lib/Shape';
-// import { Group } from 'konva/lib/Group';
-// import { Circle } from 'konva/lib/shapes/Circle';
-// import { Line } from 'konva/lib/shapes/Line';
-
-
-
 type ElemType = "default-node" | "default-edge" | "react-node" | "directe-line-edge" | "startNode" | "endNode" | "circle-node" | "3-point-edge"
-
-
 const NODE_WIDTH = 15;
 const NODE_HEIGHT = 15;
 const MARGIN = 70;
@@ -70,7 +57,7 @@ export class DiagramCnv {
         this.height = this.container.clientHeight
     }
     async init() {
-        await this.initDb().then(()=>{
+        await this.initDb().then(() => {
 
             console.log("1. data have loaded");
             this.initKnovaStage()
@@ -100,26 +87,55 @@ export class DiagramCnv {
         }
     }
     initKnovaStage() {
-        this.knovaStage = new Stage({
+        this.knovaStage = new Konva.Stage({
             container: this.container, // Replace with your container id
             width: this.container.clientWidth,
             height: this.container.clientHeight
         })
-        // this.initLayer1()
+        this.initLayer1()
         this.initLayer2()
-        // this.initEvent();
+        this.initEvent();
     }
-    initLayer2() {
+    reDrawLayer1() {
+        if (this.diagramPO.selectedElem && this.diagramPO.selectedElem.id) {
+            const elemClicked = this.knovaLayer1.findOne("#" + this.diagramPO.selectedElem.id)
+            if (elemClicked) {
+                this.setElemClicked(elemClicked as unknown as KnovaShap)
+            }
+        }
+    }
+    drawLayer2() {
+        this.knovaLayer2.removeChildren()
+        const leftBar = new Rect({
+            "x": 0,
+            "y": 0,
+            "width": MARGIN,
+            "height": this.height,
+            "fill": "blue"
 
-        this.knovaLayer2 = new Layer()
 
-        const startElem = this.createNode(this.diagramPO.startNode, { "x": 0, "y": this.height / 2 - NODE_HEIGHT / 2 })
-        const endElem = this.createNode(this.diagramPO.endNode, { "x": this.width - NODE_WIDTH, "y": this.height / 2 - NODE_HEIGHT / 2 })
-        const curTargetElem = this.createNode(this.diagramPO.endNode)
+        })
+        const rightBar = new Rect({
+            "x": this.width - MARGIN,
+            "y": 0,
+            "width": MARGIN,
+            "height": this.height,
+            "fill": 'blue'
+        })
 
+        const startElem = this.createNode(this.diagramPO.startNode, { "x": NODE_WIDTH, "y": NODE_HEIGHT }, { fill: "pink", stroke: "black" })
+        const endElem = this.createNode(this.diagramPO.endNode, { "x": this.width - NODE_WIDTH, "y": this.height / 2 - NODE_HEIGHT / 2 }, { fill: "red", stroke: "black" })
+        const curTargetElem = this.createNode(this.diagramPO.endNode, { "x": NODE_WIDTH, "y": 3 * NODE_HEIGHT }, { fill: "yellow", stroke: "black" })
+
+        this.knovaLayer2.add(leftBar, rightBar)
         this.knovaLayer2.add(startElem, endElem, curTargetElem)
         this.knovaStage.add(this.knovaLayer2)
     }
+    initLayer2() {
+        this.knovaLayer2 = new Layer()
+        this.drawLayer2();
+    }
+
     initLayer1() {
         this.knovaLayer1 = new Layer()
         this.diagramPO.nodes.forEach(n => {
@@ -132,7 +148,6 @@ export class DiagramCnv {
             this.knovaLayer1.add(edge)
             this.bindElemEvent(edge)
         })
-
         this.knovaStage.add(this.knovaLayer1)
     }
     save() {
@@ -168,12 +183,40 @@ export class DiagramCnv {
             this.diagramPO.mousePointElem = this.findPOById(elem.id())
         })
         elem.on("mouseout", (e) => {
-
             this.diagramPO.mousePointElem = null
         })
+        elem.on("click", (e) => {
+            this.clickElem(elem)
+        })
+    }
+    setElemClicked(elem: KnovaShap) {
+        if (elem instanceof Shape) {
+            elem.stroke("red")
+        }
+    }
+    clickElem(elem: KnovaShap) {
+        const clickPO = this.findPOById(elem.id())
+        const selectedPO = this.diagramPO.selectedElem
+        if (!selectedPO) {
+            this.diagramPO.selectedElem = clickPO
+            this.setElemClicked(elem)
+        } else if (selectedPO.id === clickPO.id) {
+            const selectedElem = this.knovaLayer1.findOne(`#${selectedPO.id}`)
+            if (selectedElem instanceof Shape) {
+                selectedElem.stroke("black")
+            }
+            this.diagramPO.selectedElem = null
+        } else {
+            const selectedElem = this.knovaLayer1.findOne(`#${selectedPO.id}`)
+            if (selectedElem instanceof Shape) {
+                selectedElem.stroke("black")
+            }
+            this.setElemClicked(elem)
+            this.diagramPO.selectedElem = clickPO
+        }
     }
 
-    createNode(n: NodePO, pos?: { "x": number, "y": number }): Group | Shape<ShapeConfig> {
+    createNode(n: NodePO, pos?: { "x": number, "y": number }, style?: { "stroke": string, "fill": string }): Group | Shape<ShapeConfig> {
         const x = pos?.x || 0
         const y = pos?.y || 0
         if (n.type == "circle-node") {
@@ -184,27 +227,28 @@ export class DiagramCnv {
                 "name": n.type,
                 "radius": NODE_WIDTH,
                 "strokeWidth": 3,
-                "stroke": 'black',
-                "fill": "green"
+                "stroke": style?.stroke || 'black',
+                "fill": style?.fill || "green"
             })
             return res
         }
     }
     removeElem(elem: NodePO | EdgePO) {
+
         if (elem.type == 'circle-node') {
             this.diagramPO.nodes = this.diagramPO.nodes.filter(n => {
-                n.id != elem.id
+                return n.id != elem.id
             })
         } else {
             this.diagramPO.edges = this.diagramPO.edges.filter(e => {
-                e.id != elem.id
+                return e.id != elem.id
             })
         }
         this.knovaLayer1.findOne(`#${elem.id}`).destroy()
-        this.draw()
+
     }
     createNextElem() {
-        if (this.diagramPO.curTargetElem.type == 'circle-node') {
+        if (this.diagramPO.selectedElem.type == 'circle-node') {
             const newEdge: EdgePO = {
                 id: this.generateUUID(),
                 name: `${this.diagramPO.selectedElem.name}-${this.diagramPO.curTargetElem.name}`,
@@ -215,14 +259,16 @@ export class DiagramCnv {
             this.diagramPO.edges.push(newEdge)
             this.diagramPO.selectedElem = newEdge
             const newEdgeElem = this.createEdge(newEdge)
+            this.bindElemEvent(newEdgeElem)
             this.knovaLayer1.add(newEdgeElem)
-        } else if (this.diagramPO.curTargetElem.type == 'directe-line-edge') {
+            this.diagramPO.selectedElem = newEdge
+        } else if (this.diagramPO.selectedElem.type == 'directe-line-edge') {
+            this.removeElem(this.diagramPO.selectedElem)
             const curSelectedEdge: EdgePO = this.diagramPO.selectedElem as EdgePO
-            this.diagramPO.edges = this.diagramPO.edges.filter(e => { e.id != this.diagramPO.selectedElem.id })
             const newNode: NodePO = {
                 "id": this.generateUUID(),
                 "name": "new name",
-                type: 'circle-node'
+                "type": "circle-node"
             }
             this.diagramPO.nodes.push(newNode)
             this.diagramPO.selectedElem = newNode
@@ -245,14 +291,14 @@ export class DiagramCnv {
                 name: 'new edge2',
                 fromNodeId: newNode.id,
                 toNodeId: curSelectedEdge.toNodeId,
-                type: 'circle-node'
+                type: 'directe-line-edge'
             }
             const newEdgeElem1 = this.createEdge(newEdge1)
             this.bindElemEvent(newEdgeElem1)
             this.knovaLayer1.add(newEdgeElem1)
             this.diagramPO.selectedElem = newEdge1
             this.diagramPO.edges.push(newEdge)
-            this.removeElem(this.diagramPO.selectedElem)
+            this.diagramPO.edges.push(newEdge1)
         }
         this.draw()
     }
@@ -262,7 +308,6 @@ export class DiagramCnv {
         })
 
         return res
-
     }
     initEvent() {
         const container = this.knovaStage.container();
@@ -324,9 +369,11 @@ export class DiagramCnv {
         if (this.knovaLayer1) {
             this.layout()
             this.knovaLayer1.draw()
+            this.reDrawLayer1()
         }
         if (this.knovaLayer2) {
             this.knovaLayer2.draw()
+            this.drawLayer2()
         }
     }
     edge(nodeId1: string, nodeId2: string): KnovaEdge {
@@ -345,31 +392,28 @@ export class DiagramCnv {
         return null
     }
     layout() {
+        debugger
         const g = new dagre.graphlib.Graph({ directed: true });
-        // Set an object for the graph label
+        // Set an object for the graph label 
         g.setGraph({ rankdir: "LR", align: "DR", "ranker": "longest-path", "acyclicer": "greedy" });
         // Default to assigning a new object as a label for each new edge.
         g.setDefaultEdgeLabel(function () {
             return {};
         });
 
-        const allNodes = this.knovaLayer1.find('.circle-node');
-        const allEdges = this.knovaLayer1.find('.directe-line-edge');
-
+        const allNodes = this.diagramPO.nodes;
+        const allEdges = this.diagramPO.edges;
         allNodes.forEach(node => {
-            let rectNode = node as Rect
-            let width = rectNode.width()
-            let height = rectNode.height()
-            let id = rectNode.id()
+            let width = NODE_WIDTH
+            let height = NODE_HEIGHT
+            let id = node.id
             g.setNode(id, {
                 width,
                 height
             })
         })
-
         allEdges.forEach(edge => {
-
-            const { fromNodeId, toNodeId } = this.findEdgeById(edge.id())
+            const { fromNodeId, toNodeId } = edge
             g.setEdge(fromNodeId, toNodeId)
         })
         dagre.layout(g);
@@ -377,24 +421,34 @@ export class DiagramCnv {
         let maxY = -Infinity;
         g.nodes().forEach(nodeId => {
             const node = g.node(nodeId)
+            if (!node) {
+                console.log(`${nodeId} not exits`);
+
+            }
             minY = Math.min(node.y, minY)
             maxY = Math.max(node.y, maxY)
         })
+
         let offsetY = (this.height) / 2 - NODE_HEIGHT / 2 - (maxY - minY) / 2
-        let offsetX = MARGIN
+        let offsetX = MARGIN + NODE_WIDTH
         g.nodes().forEach(nodeId => {
             let nodeElem = this.knovaLayer1.findOne("#" + nodeId)
             let { x, y } = g.node(nodeId)
             nodeElem.x(x)
             nodeElem.y(y)
         });
-
         g.edges().forEach(e => {
             const edge = this.edge(e.v, e.w)
             const { points } = g.edge(e.v, e.w)
-            edge.points([points[0].x, points[0].y, points[1].x, points[1].y, points[2].x, points[2].y])
+            const konvaPoints: number[] = []
+
+            points.forEach(p => {
+                konvaPoints.push(p.x, p.y)
+            })
+            edge.points(konvaPoints)
         })
-        this.knovaLayer1.move({ x: offsetX, y: offsetY })
+        this.knovaLayer1.x(offsetX)
+        this.knovaLayer1.y(offsetY)
     }
     destroy() {
         this.resizeObserver.disconnect()
