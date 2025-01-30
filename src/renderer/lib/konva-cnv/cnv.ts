@@ -8,7 +8,6 @@ import { Circle } from 'konva/lib/shapes/Circle';
 import { Line } from 'konva/lib/shapes/Line';
 import { Rect } from 'konva/lib/shapes/Rect';
 import { Stage } from 'konva/lib/Stage';
-import { BulkOperationBase } from 'typeorm';
 type ElemType = "default-node" | "default-edge" | "react-node" | "directe-line-edge" | "startNode" | "endNode" | "circle-node" | "3-point-edge"
 const NODE_WIDTH = 15;
 const NODE_HEIGHT = 15;
