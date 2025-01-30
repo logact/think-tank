@@ -36,7 +36,7 @@ export interface DiagramPO {
     endNode: NodePO
     curTargetElem: NodePO
     selectedElem: NodePO | EdgePO
-    mousePointElem?: NodePO | EdgePO
+
 }
 
 export class DiagramCnv {
@@ -103,12 +103,20 @@ export class DiagramCnv {
         children.forEach(child => {
             if (child instanceof Circle) {
                 child.stroke('white')
+                child.fill('green')
             }
         })
+
         if (this.diagramPO.selectedElem && this.diagramPO.selectedElem.id) {
             const elemClicked = this.knovaLayer1.findOne("#" + this.diagramPO.selectedElem.id)
             if (elemClicked) {
                 this.setElemClicked(elemClicked as unknown as KnovaShap)
+            }
+        }
+        if (this.diagramPO.curTargetElem) {
+            const elemTarget = this.knovaLayer1.findOne("#" + this.diagramPO.curTargetElem.id)
+            if (elemTarget && elemTarget instanceof Shape) {
+                elemTarget.fill("purple")
             }
         }
     }
@@ -186,13 +194,13 @@ export class DiagramCnv {
     }
 
     bindElemEvent(elem: KnovaShap) {
-        elem.on("mouseover", (e) => {
+        // elem.on("mouseover", (e) => {
 
-            this.diagramPO.mousePointElem = this.findPOById(elem.id())
-        })
-        elem.on("mouseout", (e) => {
-            this.diagramPO.mousePointElem = null
-        })
+        //     this.diagramPO.mousePointElem = this.findPOById(elem.id())
+        // })
+        // elem.on("mouseout", (e) => {
+        //     this.diagramPO.mousePointElem = null
+        // })
         elem.on("click", (e) => {
             this.clickElem(elem)
         })
@@ -223,7 +231,6 @@ export class DiagramCnv {
             this.diagramPO.selectedElem = clickPO
         }
     }
-
     createNode(n: NodePO, pos?: { "x": number, "y": number }, style?: { "stroke": string, "fill": string }): Group | Shape<ShapeConfig> {
         const x = pos?.x || 0
         const y = pos?.y || 0
@@ -314,7 +321,6 @@ export class DiagramCnv {
         const res = this.diagramPO.edges.find(e => {
             return e.id == id
         })
-
         return res
     }
     initEvent() {
@@ -340,8 +346,9 @@ export class DiagramCnv {
             e.preventDefault();
         })
         container.addEventListener('keydown', (e) => {
-            if (e.metaKey && e.key == "t") {
-                this.diagramPO.curTargetElem = this.diagramPO.mousePointElem
+            if (e.ctrlKey && e.key == "t") {
+                this.diagramPO.curTargetElem = this.diagramPO.selectedElem
+                this.draw()
             }
             e.preventDefault();
         })
@@ -401,7 +408,6 @@ export class DiagramCnv {
         return null
     }
     layout() {
-        debugger
         const g = new dagre.graphlib.Graph({ directed: true });
         // Set an object for the graph label 
         g.setGraph({ rankdir: "LR", align: "DR", "ranker": "longest-path", "acyclicer": "greedy" });
