@@ -1,13 +1,10 @@
-import { DiagramVO } from '@common/vo/diagram-bo';
 import * as React from 'react';
-import { Diagram } from '../diagram';
+import { DiagramDetail } from '../diagram';
 
 const Home = () => {
 
     return (
-        <>
-            <Diagram paramId={"root"} />
-        </>
+        <DiagramDetail diagramId='root' />
     )
 }
 export default Home
