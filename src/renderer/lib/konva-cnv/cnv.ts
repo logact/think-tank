@@ -137,12 +137,19 @@ export class DiagramCnv {
             "height": this.height,
             "fill": 'blue'
         })
+        const topLeft = new Rect({
+            "x": 0,
+            "y": 0,
+            "width": 200,
+            "height": 100,
+            "fill": 'blue'
+        })
 
         const startElem = this.createNode(this.diagramPO.startNode, { "x": NODE_WIDTH, "y": NODE_HEIGHT }, { fill: "pink", stroke: "black" })
         const endElem = this.createNode(this.diagramPO.endNode, { "x": this.width - NODE_WIDTH, "y": this.height / 2 - NODE_HEIGHT / 2 }, { fill: "red", stroke: "black" })
         const curTargetElem = this.createNode(this.diagramPO.endNode, { "x": NODE_WIDTH, "y": 3 * NODE_HEIGHT }, { fill: "yellow", stroke: "black" })
 
-        this.knovaLayer2.add(leftBar, rightBar)
+        this.knovaLayer2.add(topLeft, rightBar)
         this.knovaLayer2.add(startElem, endElem, curTargetElem)
         this.knovaStage.add(this.knovaLayer2)
     }
@@ -163,6 +170,7 @@ export class DiagramCnv {
             this.knovaLayer1.add(edge)
             this.bindElemEvent(edge)
         })
+
         this.knovaStage.add(this.knovaLayer1)
     }
     save() {
