@@ -8,6 +8,7 @@ import { Circle } from 'konva/lib/shapes/Circle';
 import { Line } from 'konva/lib/shapes/Line';
 import { Rect } from 'konva/lib/shapes/Rect';
 import { Stage } from 'konva/lib/Stage';
+import { BulkOperationBase } from 'typeorm';
 type ElemType = "default-node" | "default-edge" | "react-node" | "directe-line-edge" | "startNode" | "endNode" | "circle-node" | "3-point-edge"
 const NODE_WIDTH = 15;
 const NODE_HEIGHT = 15;
@@ -97,6 +98,13 @@ export class DiagramCnv {
         this.initEvent();
     }
     reDrawLayer1() {
+        // draw the selected node
+        let children = this.knovaLayer1.children
+        children.forEach(child => {
+            if (child instanceof Circle) {
+                child.stroke('white')
+            }
+        })
         if (this.diagramPO.selectedElem && this.diagramPO.selectedElem.id) {
             const elemClicked = this.knovaLayer1.findOne("#" + this.diagramPO.selectedElem.id)
             if (elemClicked) {
@@ -254,7 +262,7 @@ export class DiagramCnv {
                 name: `${this.diagramPO.selectedElem.name}-${this.diagramPO.curTargetElem.name}`,
                 fromNodeId: this.diagramPO.selectedElem.id,
                 toNodeId: this.diagramPO.curTargetElem.id,
-                type: 'directe-line-edge'
+                type: 'directe-line-edge',
             }
             this.diagramPO.edges.push(newEdge)
             this.diagramPO.selectedElem = newEdge
@@ -370,6 +378,7 @@ export class DiagramCnv {
             this.layout()
             this.knovaLayer1.draw()
             this.reDrawLayer1()
+
         }
         if (this.knovaLayer2) {
             this.knovaLayer2.draw()
