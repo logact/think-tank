@@ -330,6 +330,42 @@ export class DiagramCnv {
         })
         return res
     }
+    deleteNode(el: Circle) {
+        this.diagramPO.edges.filter(e => {
+            return e.fromNodeId == el.id() || e.toNodeId == el.id()
+        }).map(e => {
+            return this.knovaLayer1.findOne(`#${e.id}`)
+        }).forEach(e => {
+            if (e instanceof Shape) {
+                e.destroy()
+            }
+        })
+        this.diagramPO.edges = this.diagramPO.edges.filter(e => {
+            return (e.fromNodeId !== el.id() && e.toNodeId !== el.id())
+        })
+
+        el.destroy()
+        this.diagramPO.nodes = this.diagramPO.nodes.filter(n => {
+            return n.id != el.id()
+        })
+
+    }
+    deleteEdge(el: Line) {
+        this.diagramPO.edges = this.diagramPO.edges.filter(e => {
+            return e.id != el.id()
+        })
+        el.destroy()
+    }
+    deleteElemById(id: string) {
+        const elem = this.knovaLayer1.findOne("#" + this.diagramPO.selectedElem.id)
+        if (elem instanceof Circle) {
+            this.deleteNode(elem)
+        } else if (elem instanceof Line) {
+            this.deleteEdge(elem)
+        }
+        this.draw()
+
+    }
     initEvent() {
         const container = this.knovaStage.container();
         container.tabIndex = 1
@@ -359,12 +395,42 @@ export class DiagramCnv {
             }
             e.preventDefault();
         })
+        container.addEventListener('keydown', (e) => {
+            if (e.key == 'Backspace' && this.diagramPO.selectedElem) {
+
+                this.deleteElemById(this.diagramPO.selectedElem.id)
+                // const elem = this.knovaLayer1.findOne(this.diagramPO.selectedElem.id)
+
+            }
+        })
         this.knovaStage.on("wheel", (e) => {
             e.evt.preventDefault()
-            let deltaX = - e.evt.deltaX / 3
-            let deltaY = - e.evt.deltaY / 3
-            this.knovaLayer1.move({ x: deltaX, y: deltaY })
+            if (e.evt.ctrlKey) {
+                const oldScale = this.knovaLayer1.scaleX(); // 获取当前缩放比例
+                const scaleBy = 1.1; // 每次缩放的倍数
+                // const pointer = this.knovaStage.getPointerPosition(); // 获取当前缩放比例
+                const pointer = this.knovaStage.getPointerPosition(); // 获取鼠标位置
+                let newScale = e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
+                newScale = Math.max(0.5, Math.min(newScale, 5));
+                this.knovaLayer1.scale({ x: newScale, y: newScale });
+
+                const mousePointTo = {
+                    x: (pointer.x - this.knovaLayer1.x()) / oldScale,
+                    y: (pointer.y - this.knovaLayer1.y()) / oldScale,
+                };
+                const newPos = {
+                    x: pointer.x - mousePointTo.x * newScale,
+                    y: pointer.y - mousePointTo.y * newScale,
+                };
+                this.knovaLayer1.position(newPos);
+
+            } else {
+                let deltaX = - e.evt.deltaX / 3
+                let deltaY = - e.evt.deltaY / 3
+                this.knovaLayer1.move({ x: deltaX, y: deltaY })
+            }
         })
+
 
         this.initResizeEvent()
     }
@@ -376,10 +442,12 @@ export class DiagramCnv {
             requestAnimationFrame(
                 () => {
                     for (const entry of entries) {
+                        debugger
                         this.width = this.container.clientWidth
                         this.height = this.container.clientHeight
                         this.knovaStage.width(this.width)
                         this.knovaStage.height(this.height)
+                        this.draw()
                     }
                 }
             )
